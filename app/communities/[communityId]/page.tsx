@@ -140,6 +140,22 @@ export default function CommunityPage() {
             read: false,
             createdAt: serverTimestamp()
           });
+
+          const ownerDoc = await getDoc(doc(db, 'users', community.ownerId));
+          if (ownerDoc.exists()) {
+            const tokens = ownerDoc.data().fcmTokens;
+            if (tokens && tokens.length > 0) {
+              fetch('/api/notifications/send', {
+                method: 'POST',
+                body: JSON.stringify({
+                  tokens,
+                  title: `New Join Request`,
+                  body: `${profile?.displayName || 'Someone'} requested to join ${community.name}`,
+                  data: { communityId: community.id, type: 'JOIN_REQUEST' }
+                })
+              }).catch(e => console.error('Notification failed', e));
+            }
+          }
         } catch (notifErr) {
           console.error("Failed to send notification", notifErr);
         }

@@ -90,6 +90,22 @@ export default function PostDetailPage() {
               read: false,
               createdAt: serverTimestamp()
             });
+
+            const ownerDoc = await getDoc(doc(db, 'users', post.ownerId));
+            if (ownerDoc.exists()) {
+              const tokens = ownerDoc.data().fcmTokens;
+              if (tokens && tokens.length > 0) {
+                fetch('/api/notifications/send', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    tokens,
+                    title: `${profile.displayName || 'Someone'} favorited your listing`,
+                    body: post.title,
+                    data: { postId: post.id, type: 'LIKE' }
+                  })
+                }).catch(e => console.error('Notification failed', e));
+              }
+            }
           } catch (notifErr) {
             console.error("Failed to send notification", notifErr);
           }

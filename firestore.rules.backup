@@ -50,29 +50,12 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.blockerId == request.auth.uid;
     }
 
-    function isValidPhotoUrls(data) {
-      return !data.keys().hasAny(['photoUrls'])
-        || (
-          data.photoUrls is list
-          && data.photoUrls.size() <= 10
-          && (
-            data.photoUrls.size() == 0
-            || (
-              data.photoUrls[0] is string
-              && data.photoUrls[0].size() <= 2048
-            )
-          )
-        );
-    }
-
     function isValidPost(data) {
       return data.ownerId == request.auth.uid
              && data.ownerName is string
              && data.description is string && data.description.size() <= 2000
-             && isValidPhotoUrls(data)
-             && data.status in ['ACTIVE', 'SOLD', 'ARCHIVED', 'PENDING_APPROVAL']
-             && (!data.keys().hasAny(['createdAt']) || data.createdAt is timestamp)
-             && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is timestamp);
+             && (!data.keys().hasAny(['photoUrls']) || (data.photoUrls is list))
+             && data.status in ['ACTIVE', 'SOLD', 'ARCHIVED', 'PENDING_APPROVAL'];
     }
 
     match /posts/{postId} {
@@ -97,8 +80,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
       allow create: if isSignedIn()
                          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds
-                         && incoming().senderId == request.auth.uid
-                         && (!incoming().keys().hasAny(['createdAt']) || incoming().createdAt is timestamp);
+                         && incoming().senderId == request.auth.uid;
     }
 
     match /reports/{reportId} {
