@@ -1,0 +1,220 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "suburb": { "type": "string" },
+        "school": { "type": "string" },
+        "savedPosts": { "type": "array", "items": { "type": "string"} },
+        "fcmTokens": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "email"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "A group or page for members to interact",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "coverPhotoUrl": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "privacy": { "type": "string", "enum": ["PUBLIC", "CLOSED"] },
+        "onlyAdminsCanPost": { "type": "boolean" },
+        "requireMemberApproval": { "type": "boolean" },
+        "memberCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "ownerId", "privacy", "onlyAdminsCanPost", "requireMemberApproval", "memberCount"]
+    },
+    "CommunityMember": {
+      "title": "Community Member",
+      "description": "A member's role and status within a community",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "MODERATOR", "MEMBER"] },
+        "status": { "type": "string", "enum": ["APPROVED", "PENDING", "BANNED"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "status", "joinedAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A uniform listing or community discussion",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerPhotoUrl": { "type": "string" },
+        "communityId": { "type": "string" },
+        "postType": { "type": "string", "enum": ["LISTING", "DISCUSSION", "ANNOUNCEMENT"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "currency": { "type": "string" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } },
+        "searchTerms": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["ACTIVE", "SOLD", "ARCHIVED", "PENDING_APPROVAL"] },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "ownerName", "description", "postType", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "authorId", "text", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like on a post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "createdAt"]
+    },
+    "Thread": {
+      "title": "Thread",
+      "description": "Messaging thread between two users for a post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "postTitle": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "lastMessageText": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "threadKey": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "postTitle", "sellerId", "sellerName", "buyerId", "buyerName", "participantIds", "threadKey"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message within a thread",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    },
+    "Block": {
+      "title": "Block",
+      "description": "A user blocking another user",
+      "type": "object",
+      "properties": {
+        "blockerId": { "type": "string" },
+        "blockedId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["blockerId", "blockedId"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A report against a post",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "postId": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "postId", "reason", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["LIKE", "COMMENT", "JOIN_REQUEST", "GENERAL", "MATCH"] },
+        "actorId": { "type": "string" },
+        "actorName": { "type": "string" },
+        "actorPhotoUrl": { "type": "string" },
+        "referenceId": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "actorId", "actorName", "referenceId", "message", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/communities/{communityId}": {
+      "schema": "Community",
+      "description": "Communities (Groups/Pages)"
+    },
+    "/communities/{communityId}/members/{userId}": {
+      "schema": "CommunityMember",
+      "description": "Members of a community"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Uniform listings and community posts"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments on a post"
+    },
+    "/posts/{postId}/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Likes on a post"
+    },
+    "/threads/{threadId}": {
+      "schema": "Thread",
+      "description": "Messaging threads"
+    },
+    "/threads/{threadId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat messages"
+    },
+    "/blocks/{blockId}": {
+      "schema": "Block",
+      "description": "User blocks"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Content reports"
+    }
+  }
+}

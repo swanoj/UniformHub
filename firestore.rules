@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Connectivity Check ---
+    // Allows any user (even unauthenticated) to read this specific dummy document
+    // to verify the Firebase connection is active and bypassing cache.
+    match /_health_check_/ping {
+      allow get: if true;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn(); } // Relaxed for demo - check for verification if needed in production
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'oliverjs090@gmail.com'; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // --- User Rules ---
+    function isValidUser(data) {
+      return data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100
+             && data.email is string && data.email.size() <= 256
+             && (data.get('photoUrl', null) == null || data.photoUrl is string)
+             && (data.get('suburb', null) == null || data.suburb is string);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) 
+                     && incoming().email == existing().email 
+                     && incoming().createdAt == existing().createdAt
+                     && incoming().updatedAt == request.time;
+    }
+
+    // --- Notification Rules ---
+    function isValidNotification(data) {
+      return data.userId is string 
+             && data.type in ["LIKE", "COMMENT", "JOIN_REQUEST", "GENERAL", "MATCH"]
+             && data.actorId == request.auth.uid
+             && data.actorName is string
+             && data.referenceId is string
+             && data.message is string
+             && data.read is bool;
+    }
+
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create: if isVerified() && isValidNotification(incoming()) && incoming().createdAt == request.time && incoming().userId == userId;
+      allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isOwner(userId);
+    }
+
+    // --- Communities Rules ---
+    function getCommunityMember(communityId, userId) {
+      return get(/databases/$(database)/documents/communities/$(communityId)/members/$(userId)).data;
+    }
+    function isCommunityModerator(communityId) {
+      let member = getCommunityMember(communityId, request.auth.uid);
+      return member != null && (member.role == 'MODERATOR' || member.role == 'ADMIN');
+    }
+    function isCommunityAdmin(communityId) {
+      let member = getCommunityMember(communityId, request.auth.uid);
+      return member != null && member.role == 'ADMIN';
+    }
+
+    match /communities/{communityId} {
+      allow read: if true; // Public discovery
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isOwner(existing().ownerId);
+    }
+    
+    match /communities/{communityId}/members/{userId} {
+      allow read: if true;
+      allow create: if isSignedIn() && userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        userId == request.auth.uid || 
+        isCommunityModerator(communityId)
+      );
+      allow delete: if isSignedIn() && (
+        userId == request.auth.uid || 
+        isCommunityModerator(communityId)
+      );
+    }
+
+    // --- Post Rules ---
+    function isValidPost(data) {
+      return data.ownerId == request.auth.uid
+             && data.ownerName is string && data.ownerName.size() > 0
+             && data.description is string && data.description.size() <= 2000
+             && data.status in ['ACTIVE', 'SOLD', 'ARCHIVED', 'PENDING_APPROVAL'];
+    }
+
+    match /posts/{postId} {
+      allow read: if true; // Relaxed for demo.
+      allow create: if isSignedIn() && isValidPost(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() || (isSignedIn() && isOwner(existing().ownerId) && isValidPost(incoming())
+                     && incoming().ownerId == existing().ownerId
+                     && incoming().createdAt == existing().createdAt
+                     && incoming().updatedAt == request.time);
+      allow delete: if isAdmin() || isOwner(existing().ownerId);
+    }
+
+    // --- Thread Rules ---
+    function isParticipant(thread) {
+      return request.auth.uid in thread.participantIds;
+    }
+
+    function isValidThread(data) {
+      return data.participantIds is list && data.participantIds.size() == 2
+             && request.auth.uid in data.participantIds
+             && data.threadKey is string
+             && data.postId is string
+             && data.sellerId is string
+             && data.buyerId is string;
+    }
+
+    match /threads/{threadId} {
+      allow get, list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isVerified() && isValidThread(incoming()) && incoming().createdAt == request.time;
+      allow update: if isVerified() && request.auth.uid in existing().participantIds
+                     && incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastMessageAt', 'lastMessageSenderId', 'lastMessageRead', 'participantIds'])
+                     && (
+                        (incoming().diff(existing()).affectedKeys().hasAny(['lastMessageAt']) && incoming().lastMessageAt == request.time) ||
+                        incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageRead', 'participantIds'])
+                     );
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid in existing().participantIds);
+    }
+
+    match /threads/{threadId}/messages/{messageId} {
+      allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
+      allow create: if isVerified() 
+                     && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds
+                     && incoming().senderId == request.auth.uid
+                     && incoming().text is string && incoming().text.size() > 0 && incoming().text.size() <= 1000
+                     && incoming().createdAt == request.time;
+    }
+
+    // --- Block Rules ---
+    match /blocks/{blockId} {
+      allow read: if isOwner(existing().blockerId);
+      allow create: if isVerified() && incoming().blockerId == request.auth.uid;
+      allow delete: if isOwner(existing().blockerId);
+    }
+
+    // --- Report Rules ---
+    match /reports/{reportId} {
+      allow create: if isVerified() && incoming().reporterId == request.auth.uid;
+      allow read: if isAdmin() || isOwner(existing().reporterId);
+    }
+  }
+}
