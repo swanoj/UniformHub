@@ -10,7 +10,7 @@ export function useFeed(filters: FeedFilters, searchQuery: string) {
   const [fetchingMore, setFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPosts = useCallback(async (isLoadMore = false, useFallback = false) => {
+  const fetchPosts = useCallback(async (isLoadMore = false) => {
     if (loading && isLoadMore) return;
     if (isLoadMore && (!hasMore || fetchingMore)) return;
 
@@ -19,16 +19,13 @@ export function useFeed(filters: FeedFilters, searchQuery: string) {
     setError(null);
 
     try {
-      const serverFilters = { ...filters, searchQuery: useFallback ? '' : searchQuery };
+      const serverFilters = { ...filters, searchQuery };
       let newDocs = await fetchFeedPosts(serverFilters, isLoadMore ? lastDoc : null);
 
-      // If no results and we haven't used fallback yet, try fetching without search query or filters
-      if (newDocs.length === 0 && !isLoadMore && !useFallback && (searchQuery || filters.category !== 'All' || filters.type !== 'All')) {
-        const fallbackDocs = await fetchFeedPosts({ category: 'All', type: 'All', condition: 'All', searchQuery: '' }, null);
-        newDocs = fallbackDocs;
-        setHasMore(fallbackDocs.length >= 20);
-      } else if (newDocs.length < 20) {
+      if (newDocs.length < 20) {
         setHasMore(false);
+      } else {
+        setHasMore(true);
       }
 
       const parsedPosts = newDocs.map(d => ({ id: d.id, ...d.data() }));
@@ -61,8 +58,7 @@ export function useFeed(filters: FeedFilters, searchQuery: string) {
     }, 50);
     return () => clearTimeout(to);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.category, filters.type, filters.condition, searchQuery]); 
+  }, [filters.category, filters.type, filters.condition, filters.size, filters.school, filters.suburb, filters.sortBy, searchQuery]); 
 
   return { posts, loading, hasMore, fetchingMore, fetchPosts, error };
 }
-

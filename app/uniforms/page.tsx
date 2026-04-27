@@ -18,7 +18,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 
-const CATEGORIES = ['All', 'School', 'Sport', 'Secondhand'];
+const CATEGORIES = ['School', 'Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 
@@ -37,19 +37,12 @@ function UniformsContent() {
     category: selectedCategory,
     type: selectedType,
     condition: selectedCondition,
-  }), [selectedCategory, selectedType, selectedCondition]);
+    sortBy: sortBy === 'price-low' ? 'PriceLowToHigh' : sortBy === 'price-high' ? 'PriceHighToLow' : 'Newest'
+  }), [selectedCategory, selectedType, selectedCondition, sortBy]);
 
   const { posts, loading, hasMore, fetchingMore, fetchPosts } = useFeed(filters, searchQuery);
 
-  const filteredPosts = useMemo(() => {
-    let result = [...posts];
-    if (sortBy === 'price-low') {
-      result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-    } else if (sortBy === 'price-high') {
-      result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-    }
-    return result;
-  }, [posts, sortBy]);
+  const filteredPosts = posts;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

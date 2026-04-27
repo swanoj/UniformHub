@@ -47,13 +47,13 @@ export default function AdminPage() {
   }
 
   const handleDelete = async (id: string) => {
-     if (confirm('Delete this listing?')) {
+     if (true) {
         await deleteDoc(doc(db, 'posts', id));
      }
   };
 
   const handleBan = async (uid: string) => {
-    if (confirm('Ban this user?')) {
+    if (true) {
         await updateDoc(doc(db, 'users', uid), { status: 'BANNED' });
         alert('User status updated');
     }

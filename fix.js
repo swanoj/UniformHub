@@ -1,4 +1,6 @@
-rules_version = '2';
+const fs = require('fs');
+
+const firestoreRules = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
@@ -18,41 +20,14 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) || isAdmin())
-                     && incoming().email == existing().email
+      allow update: if (isOwner(userId) || isAdmin()) 
+                     && incoming().email == existing().email 
                      && (incoming().get('createdAt', null) == existing().get('createdAt', null));
-    }
-
-    match /users/{userId}/notifications/{notificationId} {
-      allow read: if isOwner(userId);
-      allow create: if isSignedIn();
-      allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
-      allow delete: if isOwner(userId);
-    }
-    
-    match /communities/{communityId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if (isAdmin() || (isSignedIn() && isOwner(existing().ownerId)));
-      allow delete: if isAdmin() || (isSignedIn() && isOwner(existing().ownerId));
-    }
-
-    match /communities/{communityId}/members/{memberId} {
-      allow read: if true;
-      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
-      allow update: if isSignedIn() && existing().userId == request.auth.uid;
-      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
-    }
-
-    match /blocks/{blockId} {
-      allow read: if isSignedIn() && resource.data.blockerId == request.auth.uid;
-      allow create: if isSignedIn() && incoming().blockerId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.blockerId == request.auth.uid;
     }
 
     function isValidPost(data) {
       return data.ownerId == request.auth.uid
-             && data.ownerName is string
+             && data.ownerName is string 
              && data.description is string && data.description.size() <= 2000
              && (!data.keys().hasAny(['photoUrls']) || (data.photoUrls is list))
              && data.status in ['ACTIVE', 'SOLD', 'ARCHIVED', 'PENDING_APPROVAL'];
@@ -78,8 +53,8 @@ service cloud.firestore {
 
     match /threads/{threadId}/messages/{messageId} {
       allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
-      allow create: if isSignedIn()
-                         && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds
+      allow create: if isSignedIn() 
+                         && request.auth.uid in get(/databases/$(aluth)/documents/threads/$(threadId)).data.participantIds
                          && incoming().senderId == request.auth.uid;
     }
 
@@ -88,4 +63,43 @@ service cloud.firestore {
       allow read: if isAdmin() || (isSignedIn() && existing().reporterId == request.auth.uid);
     }
   }
+}`;
+
+const storageRules = `rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o |
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return request.auth.uid == userId; }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /post_images/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId) 
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    match /community_covers/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId)
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}`;
+
+fs.writeFileSync('firestore.rules', firestoreRules.replace(/$\\(aluth\\)/g, '_$(database)'.replace('_', ''));
+fs.writeFileSync('storage.rules', storageRules);
+
+// Add verification gate in app/create/page.tsx
+let createTsx = fs.readFileSync('app/create/page.tsx', 'utf8');
+if (!createTsx.includes('if (!profile?.isOver18 || !profile?.termsAccepted?.acceptedAt)')) {
+  createTsx = createTsx.replace(
+    'if (!agreedToTerms) {',
+    'if (!profile?.isOver18 || !profile?.termsAccepted?.acceptedAt) {\n      alert("You must complete onboarding (accept terms and verify age) before posting.");\n      return;\n    }\n    if (!agreedToTerms) {'
+  );
+  fs.writeFileSync('app/create/page.tsx', createTsx);
 }

@@ -9,11 +9,13 @@ import { useUser } from '@/components/FirebaseProvider';
 import { Navbar } from '@/components/Navbar';
 import { motion } from 'motion/react';
 import Link from 'next/link';
-import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package } from 'lucide-react';
+import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package, Plus } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import Image from 'next/image';
 
-const CATEGORIES = ['School', 'Sport', 'Secondhand'];
+const CATEGORIES = ['School', 'Sports Equipment'];
+const ITEM_NAMES = ["Blazer","Summer dress","Pinafore","Winter skirt","Blouse","Tie","Jumper","Straw hat","Sport hat","Sport Visor","Scarf","Rain jacket","Sport jacket","Fleece","Sport track pants","Sport shorts","Sport skort","Sport polo","House polo","Bathers","Rash vest","Swim cap","School Bag","Sports bag","Library bag","Pencil case","Umbrella","School Shoes","Shorts - Summer","Shorts - Winter","Belt","Trousers","Calculator","Books","Camp / Venture / Outdoor Ed items","Netball dress","Bib","Basketball singlet","Basketball shorts","Hockey shirt","Hocket skirt","Hockey Shorts","Football (AFL) guernsey","Football (AFL) shorts","Soccer jersey/shirt","Soccer shorts","Indoor court shoes","Football boots","Soccer boots","Other"];
+const SIZES = ["4","6","8","10","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
 
 export default function EditPostPage() {
@@ -26,6 +28,7 @@ export default function EditPostPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
   const [postRef, setPostRef] = useState<any>(null);
   
   const [form, setForm] = useState({
@@ -33,6 +36,8 @@ export default function EditPostPage() {
     description: '',
     category: 'School',
     type: 'SALE',
+    size: '',
+    sizeCategory: 'Child',
     condition: 'Good',
     price: '',
     originalPrice: '',
@@ -58,6 +63,8 @@ export default function EditPostPage() {
             description: data.description || '',
             category: data.category || 'School',
             type: data.type || 'SALE',
+            size: data.size || '',
+            sizeCategory: data.sizeCategory || 'Child',
             condition: data.condition || 'Good',
             price: data.price ? String(data.price) : '',
             originalPrice: data.originalPrice ? String(data.originalPrice) : '',
@@ -84,7 +91,7 @@ export default function EditPostPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + imageFiles.length + existingPhotos.length > 10) {
-      alert("You can only have up to 10 photos.");
+      alert("You can only have up to 4 photos.");
       return;
     }
     setImageFiles(prev => [...prev, ...files]);
@@ -107,13 +114,40 @@ export default function EditPostPage() {
     });
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const dropFiles = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      if (dropFiles.length + imageFiles.length + existingPhotos.length > 4) {
+        alert('You can only upload up to 4 photos.');
+        return;
+      }
+      
+      setImageFiles(prev => [...prev, ...dropFiles]);
+      const newPreviews = dropFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviews]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !postRef) return;
-    if (!profile?.isMember) {
-      alert("You need an active membership to edit posts.");
-      return;
-    }
+    // if (!profile?.isMember) {
+    //   alert("You need an active membership to edit posts.");
+    //   return;
+    // }
     if (!agreedToTerms) {
       alert("You must agree to the Terms & Conditions.");
       return;
@@ -148,6 +182,8 @@ export default function EditPostPage() {
         description: form.description,
         category: form.category,
         type: form.type,
+        size: form.size,
+        sizeCategory: (form as any).sizeCategory,
         condition: form.condition,
         school: form.school || profile?.school || '',
         price: form.type === 'FREE' ? '' : form.price,
@@ -197,60 +233,102 @@ export default function EditPostPage() {
 
           <form onSubmit={handleSubmit} className="p-4 space-y-6">
             <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700">Photos · {existingPhotos.length + imageFiles.length} / 10</label>
-                  <p className="text-[11px] text-slate-400 font-medium">Add up to 10 photos.</p>
-                  <div className="grid grid-cols-3 gap-2 pt-2">
-                    {/* Existing Photos */}
-                    {existingPhotos.map((img, i) => (
-                      <div key={`existing-${i}`} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100 bg-slate-50">
-                        <Image src={img} alt="" fill className="object-cover" referrerPolicy="no-referrer" />
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(i)}
-                          className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-black/80 transition-all"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                    {/* New Previews */}
-                    {previewUrls.map((img, i) => (
-                      <div key={`new-${i}`} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100 bg-slate-50">
-                        <Image src={img} alt="" fill className="object-cover" referrerPolicy="no-referrer" />
-                        <button
-                          type="button"
-                          onClick={() => removeNewImage(i)}
-                          className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-black/80 transition-all"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                    {existingPhotos.length + previewUrls.length < 10 && (
-                      <label
-                        htmlFor="photo-upload"
-                        className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer text-slate-400 hover:text-indigo-600 group"
-                      >
-                        <Camera className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
-                        <input id="photo-upload" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
-                      </label>
-                    )}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-700">Photos · {existingPhotos.length + imageFiles.length} / 4</label>
                   </div>
+                  
+                  {existingPhotos.length === 0 && previewUrls.length === 0 ? (
+                    <label
+                      htmlFor="photo-upload-main"
+                      className="w-full h-40 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-3 hover:bg-slate-100 hover:border-indigo-400 transition-all cursor-pointer group shadow-sm"
+                    >
+                      <div className="w-12 h-12 bg-white rounded-full shadow-sm border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 group-hover:scale-110 transition-all">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <div className="text-center">
+                         <span className="block text-sm font-bold text-slate-700">Click to upload photos</span>
+                         <span className="block text-[11px] text-slate-500 font-medium mt-1">Add up to 4 photos of your item</span>
+                      </div>
+                      <input id="photo-upload-main" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
+                    </label>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Existing Photos */}
+                        {existingPhotos.map((img, i) => (
+                          <div key={`existing-${i}`} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-200 bg-slate-50 shadow-sm">
+                            <Image src={img} alt="" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" referrerPolicy="no-referrer" />
+                            <button
+                              type="button"
+                              onClick={() => removeExistingImage(i)}
+                              className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500/90 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {/* New Previews */}
+                        {previewUrls.map((img, i) => (
+                          <div key={`new-${i}`} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-200 bg-slate-50 shadow-sm">
+                            <Image src={img} alt="" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" referrerPolicy="no-referrer" />
+                            <button
+                              type="button"
+                              onClick={() => removeNewImage(i)}
+                              className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500/90 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {existingPhotos.length + previewUrls.length < 4 && (
+                          <label
+                            htmlFor="photo-upload-secondary"
+                            className={"aspect-square rounded-xl border-2 border-dashed " + (isDragging ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white") + " flex flex-col items-center justify-center gap-2 hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer text-slate-400 hover:text-indigo-600 group"}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                          >
+                            <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                            <span className="text-[11px] font-black uppercase tracking-widest">Add More</span>
+                            <input id="photo-upload-secondary" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
                </div>
 
                <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700 font-sans">Title</label>
-                    <input
+                    <label className="block text-sm font-bold text-slate-700 font-sans">Item Name</label>
+                    <select
                       required
                       name="title"
                       value={form.title}
                       onChange={handleAddField}
-                      placeholder="Title"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                    />
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>Select Item Name</option>
+                      {ITEM_NAMES.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
+                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="Child">Child</option>
+                        <option value="Adult">Adult</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Size</label>
+                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="" disabled>Select Size</option>
+                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -318,6 +396,36 @@ export default function EditPostPage() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-700">Item Condition</label>
+                    <select
+                      name="condition"
+                      value={form.condition}
+                      onChange={handleAddField}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="New - with tags">New - with tags</option>
+                      <option value="New - without tags">New - without tags</option>
+                      <option value="Excellent">Excellent</option>
+                      <option value="Good">Good</option>
+                      <option value="Fair">Fair</option>
+                      <option value="Worn">Worn</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-700">Additional Comments</label>
+                    <textarea
+                      required
+                      name="description"
+                      value={form.description}
+                      onChange={handleAddField}
+                      rows={4}
+                      placeholder="e.g. missing button, texta mark"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">Listing Type</label>
                     <div className="flex gap-2">
                        {TYPES.map(t => (
@@ -335,18 +443,6 @@ export default function EditPostPage() {
                          </button>
                        ))}
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700">Description</label>
-                    <textarea
-                      required
-                      name="description"
-                      value={form.description}
-                      onChange={handleAddField}
-                      rows={4}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none"
-                    />
                   </div>
                </div>
             </div>

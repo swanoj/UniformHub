@@ -456,7 +456,7 @@ export default function CommunityPage() {
                                          </div>
                                          {post.photoUrls && post.photoUrls.length > 0 && (
                                             <div className="relative h-72 w-full bg-slate-100">
-                                               <Image src={post.photoUrls[0]} alt="" fill className="object-cover" />
+                                               <Image src={post.photoUrls[0]} alt="" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                                             </div>
                                          )}
                                      </Link>

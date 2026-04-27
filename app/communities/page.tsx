@@ -93,7 +93,7 @@ export default function CommunitiesPage() {
                     <Link key={community.id} href={`/communities/${community.id}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
                       <div className="h-24 bg-slate-200 w-full relative">
                         {community.coverPhotoUrl ? (
-                          <Image src={community.coverPhotoUrl} alt={community.name} fill className="object-cover" />
+                          <Image src={community.coverPhotoUrl} alt={community.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
                         )}

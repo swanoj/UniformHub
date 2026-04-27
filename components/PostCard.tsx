@@ -35,7 +35,7 @@ export function PostCard({ post, id }: PostCardProps) {
           fill
           className="object-cover"
           referrerPolicy="no-referrer"
-          onError={() => setImgError(true)}
+          onError={() => setImgError(true)} sizes="(max-width: 768px) 100vw, 33vw"
         />
         {post.status !== 'ACTIVE' && (
            <div className="absolute inset-0 bg-white/60 flex items-center justify-center backdrop-blur-[1px]">

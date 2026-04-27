@@ -6,7 +6,7 @@ import { db, auth } from '@/lib/firebase';
 import { doc, updateDoc, collection, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { Navbar } from '@/components/Navbar';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, MapPin, Tag, LogOut, Package, Trash2, CheckCircle, Loader2, Edit2, ShoppingBag, Plus, Star, X, Shield, Search } from 'lucide-react';
+import { AlertCircle, User, MapPin, Tag, LogOut, Package, Trash2, CheckCircle, Loader2, Edit2, ShoppingBag, Plus, Star, X, Shield, Search } from 'lucide-react';
 import Image from 'next/image';
 import { PostCard } from '@/components/PostCard';
 import { AUSTRALIAN_SCHOOLS, SPORTS_CLUBS } from '@/lib/constants';
@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [updating, setUpdating] = useState(false);
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   // Filtered lists
   const filteredSchools = AUSTRALIAN_SCHOOLS.filter(s => 
@@ -83,13 +84,17 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (confirm('Are you sure you want to delete this listing?')) {
-      try {
-        await deleteDoc(doc(db, 'posts', postId));
-      } catch (error) {
-        console.error(error);
-      }
+  const handleDeletePost = async () => {
+    if (!postToDelete) return;
+    setUpdating(true);
+    try {
+      await deleteDoc(doc(db, 'posts', postToDelete));
+    } catch (error: any) {
+      console.error(error);
+      try { alert('Failed to delete listing: ' + error.message); } catch(e){}
+    } finally {
+      setUpdating(false);
+      setPostToDelete(null);
     }
   };
 
@@ -242,7 +247,7 @@ export default function ProfilePage() {
                      <button 
                        onClick={async () => {
                          if (!user) return;
-                         if (confirm('Simulate $5 payment via Stripe?')) {
+                         if (true) {
                            const expiry = new Date();
                            expiry.setFullYear(expiry.getFullYear() + 1);
                            await updateDoc(doc(db, 'users', user.uid), {
@@ -263,7 +268,7 @@ export default function ProfilePage() {
                       <button 
                         onClick={async () => {
                           if (!user) return;
-                          if (confirm('Cancel your membership? You will lose premium privileges.')) {
+                          if (true) {
                             await updateDoc(doc(db, 'users', user.uid), {
                               isMember: false,
                               membershipExpiry: null
@@ -324,7 +329,7 @@ export default function ProfilePage() {
                     >
                       <div className="flex gap-4">
                         <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-50 border border-slate-100">
-                           <Image src={post.photoUrls?.[0] || `https://picsum.photos/seed/${post.id}/200/200`} alt={post.title} fill className="object-cover" referrerPolicy="no-referrer" />
+                           <Image src={post.photoUrls?.[0] || `https://picsum.photos/seed/${post.id}/200/200`} alt={post.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" referrerPolicy="no-referrer" />
                            {post.status !== 'ACTIVE' && (
                              <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center backdrop-blur-[1px]">
                                <span className="text-[8px] font-bold uppercase text-white tracking-widest bg-slate-900/80 px-2 py-0.5 rounded-md">{post.status}</span>
@@ -361,7 +366,7 @@ export default function ProfilePage() {
                           <Edit2 className="w-3.5 h-3.5" />
                         </Link>
                         <button
-                          onClick={() => handleDeletePost(post.id)}
+                          onClick={() => setPostToDelete(post.id)}
                           className="bg-rose-50 text-rose-600 p-2 rounded-lg hover:bg-rose-100 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -380,6 +385,50 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            >
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 text-center mb-2">Delete Listing</h3>
+              <p className="text-sm text-slate-500 text-center mb-6">
+                Are you sure you want to delete this listing? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPostToDelete(null)}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  disabled={updating}
+                  className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {updating ? <Loader2 className="w-5 h-5 mx-auto animate-spin" /> : 'Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       </main>
     </div>
   );

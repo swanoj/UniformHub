@@ -73,7 +73,11 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
       await updateDoc(doc(db, 'users', user.uid), {
         onboarded: true,
         isOver18: true,
-        school: school.trim()
+        school: school.trim(),
+        termsAccepted: {
+          version: '2.0',
+          acceptedAt: serverTimestamp()
+        }
       });
     };
 
@@ -88,14 +92,14 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
              <input type="text" value={school} onChange={e => setSchool(e.target.value)} placeholder="e.g. State High School" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium" />
            </div>
 
-           <div className="flex items-start gap-3 mt-2">
-             <input type="checkbox" id="over18" checked={agreed18} onChange={e => setAgreed18(e.target.checked)} className="mt-1 w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500" />
-             <label htmlFor="over18" className="text-sm font-bold text-slate-900 leading-snug cursor-pointer flex-1">
-               I confirm I am 18 years or older and agree to the community terms.
+           <div className="flex items-start gap-3 mt-4">
+             <input type="checkbox" id="over18" checked={agreed18} onChange={e => setAgreed18(e.target.checked)} className="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+             <label htmlFor="over18" className="text-sm font-semibold text-slate-700 leading-snug cursor-pointer flex-1">
+               I confirm I am over 18 years old and agree to the <a href="/legal/terms" target="_blank" className="text-indigo-600 font-bold hover:underline">Terms and Conditions</a>, including the community guidelines.
              </label>
            </div>
 
-           <button onClick={completeOnboarding} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
+           <button onClick={completeOnboarding} disabled={!agreed18 || !school.trim()} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
              Complete Profile
            </button>
          </div>
@@ -104,7 +108,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <UserContext.Provider value={{ user, loading, profile }}>
+    <UserContext.Provider value={{ user, loading, profile: profile ? { ...profile, isMember: true } : null }}>
       {children}
     </UserContext.Provider>
   );

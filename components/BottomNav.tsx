@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, PlusCircle, MessageSquare, User } from 'lucide-react';
+import { Home, Search, PlusCircle, MessageSquare, User, Menu } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const NAV_ITEMS = [
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { icon: Search, label: 'Explore', href: '/uniforms' },
   { icon: PlusCircle, label: 'Sell', href: '/create' },
   { icon: MessageSquare, label: 'Chats', href: '/inbox' },
-  { icon: User, label: 'Profile', href: '/profile' },
+  { icon: Menu, label: 'Menu', href: '/menu' },
 ];
 
 export function BottomNav() {

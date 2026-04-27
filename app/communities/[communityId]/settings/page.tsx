@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useUser } from '@/components/FirebaseProvider';
 import { Navbar } from '@/components/Navbar';
 import Link from 'next/link';
 import { ChevronLeft, Loader2, Users, ShieldAlert, Image as ImageIcon, CheckCircle, XCircle, Globe, Lock, Settings } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { compressImage } from '@/lib/imageUtils';
 
 export default function CommunitySettingsPage() {
   const { communityId } = useParams();
@@ -121,9 +121,11 @@ export default function CommunitySettingsPage() {
       
       if (coverPhotoFile) {
         try {
-           finalCoverUrl = await compressImage(coverPhotoFile, 1200, 400, 0.7);
+           const fileRef = ref(storage, `community_covers/${user?.uid}/${Date.now()}_${coverPhotoFile.name}`);
+           const snapshot = await uploadBytes(fileRef, coverPhotoFile);
+           finalCoverUrl = await getDownloadURL(snapshot.ref);
         } catch (e) {
-           console.error("Cover compression failed", e);
+           console.error("Cover upload failed", e);
         }
       }
 
@@ -154,7 +156,7 @@ export default function CommunitySettingsPage() {
   };
 
   const handleRemoveMember = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this member?")) return;
+    
     try {
        await deleteDoc(doc(db, `communities/${communityId}/members`, userId));
        setMembers(members.filter(m => m.id !== userId));

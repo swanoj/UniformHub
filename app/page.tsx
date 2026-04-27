@@ -33,7 +33,7 @@ import {
   Database
 } from 'lucide-react';
 
-const CATEGORIES = ['All', 'School', 'Sport', 'Secondhand'];
+const CATEGORIES = ['School', 'Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 
@@ -126,13 +126,19 @@ export default function FeedPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [selectedCondition, setSelectedCondition] = useState('All');
+  const [selectedSize, setSelectedSize] = useState('All');
+  const [selectedSchool, setSelectedSchool] = useState('All');
+  const [selectedSortBy, setSelectedSortBy] = useState('Newest');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filters = useMemo(() => ({
     category: selectedCategory,
     type: selectedType,
     condition: selectedCondition,
-  }), [selectedCategory, selectedType, selectedCondition]);
+    size: selectedSize,
+    school: selectedSchool,
+    sortBy: selectedSortBy
+  }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSchool, selectedSortBy]);
 
   const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, searchQuery);
 
@@ -222,13 +228,80 @@ export default function FeedPage() {
                 <div className="flex justify-between items-center px-1">
                    <h3 className="font-bold text-[17px] text-slate-900 leading-tight">Filters</h3>
                 </div>
-                <div className="space-y-3">
-                   <div className="flex items-center justify-between">
-                      <p className="text-[15px] font-bold text-slate-900">Location</p>
-                      <button className="text-[#1877F2] text-sm font-semibold hover:underline">Edit</button>
-                   </div>
-                   <p className="text-sm text-slate-500 font-normal">{profile?.suburb || 'Melbourne, VIC'} • Within 40 km</p>
+                
+                {/* Sort By */}
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">Sort By</label>
+                   <select 
+                     value={selectedSortBy} 
+                     onChange={(e) => setSelectedSortBy(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
+                   >
+                     <option value="Newest">Newest First</option>
+                     <option value="PriceLowToHigh">Price: Low to High</option>
+                     <option value="PriceHighToLow">Price: High to Low</option>
+                   </select>
                 </div>
+
+                {/* School */}
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">School / Club</label>
+                   <input 
+                     placeholder="Search school..."
+                     value={selectedSchool === 'All' ? '' : selectedSchool} 
+                     onChange={(e) => setSelectedSchool(e.target.value || 'All')}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                   />
+                </div>
+
+                {/* Size */}
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">Size</label>
+                   <select 
+                     value={selectedSize} 
+                     onChange={(e) => setSelectedSize(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
+                   >
+                     <option value="All">Any Size</option>
+                     {['4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', 'XXS', 'XS', 'S', 'M', 'L'].map(s => (
+                       <option key={s} value={s}>{s}</option>
+                     ))}
+                   </select>
+                </div>
+
+                {/* Condition */}
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">Condition</label>
+                   <select 
+                     value={selectedCondition} 
+                     onChange={(e) => setSelectedCondition(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
+                   >
+                     <option value="All">Any Condition</option>
+                     <option value="New - with tags">New - with tags</option>
+                     <option value="New - without tags">New - without tags</option>
+                     <option value="Excellent">Excellent</option>
+                     <option value="Good">Good</option>
+                     <option value="Fair">Fair</option>
+                     <option value="Worn">Worn</option>
+                   </select>
+                </div>
+                
+                {/* Type */}
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">Item Type</label>
+                   <select 
+                     value={selectedType} 
+                     onChange={(e) => setSelectedType(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
+                   >
+                     <option value="All">Any Type</option>
+                     <option value="SALE">For Sale</option>
+                     <option value="WTB">Want to Buy</option>
+                     <option value="FREE">Free</option>
+                   </select>
+                </div>
+
              </div>
 
              <div className="h-[1px] bg-slate-200 !my-4"></div>
@@ -245,9 +318,9 @@ export default function FeedPage() {
                        }`}
                      >
                        <div className={`w-9 h-9 rounded-full flex items-center justify-center ${selectedCategory === cat ? 'bg-[#1877F2]' : 'bg-slate-200 text-slate-600'}`}>
-                         {cat === 'School' ? <Home className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : cat === 'Sport' ? <Tag className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : <LayoutGrid className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} />}
+                         {cat === 'School' ? <Home className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : cat === 'Sports Equipment' ? <Tag className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : <LayoutGrid className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} />}
                        </div>
-                       <span className={`text-[15px] font-semibold text-left ${selectedCategory === cat ? 'text-slate-900' : 'text-slate-800'}`}>{cat === 'All' ? 'Family' : cat}</span>
+                       <span className={`text-[15px] font-semibold text-left ${selectedCategory === cat ? 'text-slate-900' : 'text-slate-800'}`}>{cat}</span>
                      </button>
                    ))}
                 </div>
@@ -411,7 +484,7 @@ export default function FeedPage() {
                           <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
                           <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
                           <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSearchQuery('');}}
+                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSchool('All'); setSelectedSortBy('Newest'); setSearchQuery('');}}
                             className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
                           >
                             Show all listings

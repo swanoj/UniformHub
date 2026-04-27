@@ -1,4 +1,4 @@
-import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface FeedFilters {
@@ -6,6 +6,10 @@ export interface FeedFilters {
   type: string;
   condition: string;
   searchQuery?: string;
+  size?: string;
+  school?: string;
+  suburb?: string;
+  sortBy?: string;
 }
 
 export const fetchFeedPosts = async (
@@ -13,37 +17,64 @@ export const fetchFeedPosts = async (
   lastDoc: QueryDocumentSnapshot | null = null,
   batchSize = 20
 ) => {
-  const eightWeeksAgo = new Date();
-  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+  let constraints: QueryConstraint[] = [];
+  
+  // Base constraints
+  constraints.push(where('status', '==', 'ACTIVE'));
+  constraints.push(where('communityId', '==', null));
 
-  let q = query(
-    collection(db, 'posts'),
-    orderBy('createdAt', 'desc'),
-    limit(50) // fetch a chunk to filter locally
-  );
-
-  if (lastDoc) {
-    q = query(q, startAfter(lastDoc));
+  // Secondary Filters
+  if (filters.category && filters.category !== 'All') {
+    constraints.push(where('category', '==', filters.category));
+  }
+  if (filters.type && filters.type !== 'All') {
+    constraints.push(where('type', '==', filters.type));
+  }
+  if (filters.condition && filters.condition !== 'All') {
+    constraints.push(where('condition', '==', filters.condition));
+  }
+  if (filters.size && filters.size !== 'All') {
+    constraints.push(where('size', '==', filters.size));
+  }
+  if (filters.school && filters.school !== 'All') {
+    constraints.push(where('school', '==', filters.school));
+  }
+  if (filters.suburb && filters.suburb !== 'All') {
+    constraints.push(where('suburb', '==', filters.suburb));
   }
 
-  const snapshot = await getDocs(q);
-  
-  // Local filtering to avoid Firebase index errors in fresh environments
-  const filteredDocs = snapshot.docs.filter(doc => {
-    const data = doc.data();
-    if (data.status !== 'ACTIVE') return false;
-    if (data.communityId) return false;
-    if (filters.category && filters.category !== 'All' && data.category !== filters.category) return false;
-    if (filters.type && filters.type !== 'All' && data.type !== filters.type) return false;
-    if (filters.condition && filters.condition !== 'All' && data.condition !== filters.condition) return false;
-    
-    if (filters.searchQuery) {
-      const term = filters.searchQuery.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2)[0];
-      if (term && !data.searchTerms?.includes(term)) return false;
+  // Handle Search Query array-contains
+  if (filters.searchQuery) {
+    const term = filters.searchQuery.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/s+/).filter(w => w.length > 2)[0];
+    if (term) {
+      constraints.push(where('searchTerms', 'array-contains', term));
     }
-    
-    return true;
-  });
+  }
 
-  return filteredDocs.slice(0, batchSize);
+  // Handle Sort By
+  if (filters.sortBy === 'PriceLowToHigh') {
+    constraints.push(orderBy('price', 'asc'));
+  } else if (filters.sortBy === 'PriceHighToLow') {
+    constraints.push(orderBy('price', 'desc'));
+  } else {
+    // Default Newest First
+    constraints.push(orderBy('createdAt', 'desc'));
+  }
+
+  // Pagination
+  if (lastDoc) {
+    constraints.push(startAfter(lastDoc));
+  }
+  constraints.push(limit(batchSize));
+
+  let q = query(collection(db, 'posts'), ...constraints);
+  
+  try {
+    const snapshot = await getDocs(q);
+    return snapshot.docs;
+  } catch (error) {
+    console.error('Firestore query failed. This is likely due to a missing composite index. See console for index URLs:', error);
+    // If the index fails, we could try to gracefully degrade sorting, but for this instruction we throw.
+    throw error;
+  }
 };

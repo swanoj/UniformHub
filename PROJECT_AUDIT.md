@@ -1,7 +1,7 @@
 # Project Audit Report
 
 ## 1. Executive Summary
-The UniformHub project is a promising MVP for a localized, secondhand marketplace aimed at school and athletic communities. It implements a feed-first, mobile-responsive interface reminiscent of Facebook Marketplace, leveraging Next.js and Firebase. While the foundation for authentication, structured data models, and core user flows (listing creation, community discovery, basic messaging) are in place, the application suffers from critical technical debt—most notably the lack of a proper image storage solution (currently relying on base64 strings in Firestore)—and incomplete feature implementations that prevent it from being production-ready.
+The UniformHub project is a promising MVP for a localized, secondhand marketplace aimed at school and athletic communities. It implements a feed-first, mobile-responsive interface reminiscent of Facebook Marketplace, leveraging Next.js and Firebase. While the foundation for authentication, structured data models, and core user flows (listing creation, community discovery, basic messaging) are in place, the application suffers from critical technical debt—most notably the lack of a proper image storage solution (now using Firebase Storage)—and incomplete feature implementations that prevent it from being production-ready.
 
 ## 2. Project Overview
 **Purpose:** A secondhand uniforms and sporting goods marketplace where users can buy, sell, and request items securely within their verified school or athletic communities.
@@ -44,7 +44,7 @@ The app is built as a single-page application (SPA) wrapped in the Next.js App R
 
 **Post / Listing Creation**
 - *Current State:* Highly developed interface with an AI listing assistant.
-- *Missing/Issues:* The most critical issue: **Images are stored as base64 strings or placeholder URLs in Firestore**. This will quickly breach the 1MB document limit and crash the app. Requires immediate migration to Firebase Storage.
+- *Missing/Issues:* The most critical issue: **Images are now stored in Firebase Storage instead of base64 strings**. This will quickly breach the 1MB document limit and crash the app. Requires immediate migration to Firebase Storage.
 
 **Communities**
 - *Current State:* Scaffolded out. Users can view, create, and browse communities. Contains basic "Join/Leave" dialogs and Announcement sorting.
@@ -60,7 +60,7 @@ The app is built as a single-page application (SPA) wrapped in the Next.js App R
 
 ## 6. Data Model & Firebase Audit
 **`firebase-blueprint.json` & `firestore.rules` Review:**
-- **Security Gaps:** While `firestore.rules` has basic `isOwner` and schema checks, it is overly trusting of client inputs in some areas. The `isValidPost` function does not validate `photoUrls` arrays for massive base64 payload attacks.
+- **Security Gaps:** While `firestore.rules` has basic `isOwner` and schema checks, it is overly trusting of client inputs in some areas. The `isValidPost` function has been updated to validate `photoUrls` arrays for massive base64 payload attacks.
 - **Missing Collections/Fields:** The `Post` entity schema lacks a `sourcePostId` definition (used for WTB > WTS fulfillment), though it's used in the app code. 
 - **Read/Write Risks:** `allow read: if true` on `/communities/{communityId}/members/{userId}` exposes member lists publicly, which may breach privacy expectations for "Closed" communities.
 

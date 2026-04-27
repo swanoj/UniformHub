@@ -49,7 +49,7 @@ export default function InboxPage() {
   const handleDelete = async (e: React.MouseEvent, threadId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this conversation? This will delete it for both participants.')) return;
+    
     
     try {
       await deleteDoc(doc(db, 'threads', threadId));

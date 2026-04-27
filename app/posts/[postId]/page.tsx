@@ -112,16 +112,27 @@ export default function PostDetailPage() {
       return;
     }
     
-    if (!confirm('Simulate 2-party payment and mark as SOLD? Once sold, this listing will disappear from the public uniforms feed.')) return;
+    const qtyToBuy = parseInt(window.prompt('How many items would you like to purchase? (Max: ' + (post.quantity || 1) + ')', '1') || '0', 10);
+    if (!qtyToBuy || isNaN(qtyToBuy) || qtyToBuy <= 0 || qtyToBuy > (post.quantity || 1)) {
+        alert('Invalid quantity.');
+        return;
+    }
+    
+    
     
     setBuying(true);
     try {
-      await updateDoc(doc(db, 'posts', post.id), {
-        status: 'SOLD',
-        soldToId: user.uid,
-        soldAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+          const remaining = (post.quantity || 1) - qtyToBuy;
+      if (remaining <= 0) {
+        await updateDoc(doc(db, 'posts', post.id), {
+          status: 'SOLD',
+          quantity: 0
+        });
+      } else {
+        await updateDoc(doc(db, 'posts', post.id), {
+          quantity: remaining
+        });
+      }
       alert('Transaction Successful! The item is now marked as SOLD.');
       router.push('/');
     } catch (error) {
@@ -181,6 +192,7 @@ export default function PostDetailPage() {
         status: 'NEW',
         createdAt: serverTimestamp(),
       });
+      await fetch('/api/report', { method: 'POST', body: JSON.stringify({ postId: post.id, reporterId: user.uid, postUrl: window.location.href }) });
       alert('Report submitted. Thank you for keeping our community safe.');
     } catch (error) {
       console.error("Error reporting post", error);
@@ -189,7 +201,7 @@ export default function PostDetailPage() {
 
   const handleBlockUser = async () => {
     if (!user || !post) return;
-    if (confirm(`Are you sure you want to block ${post.ownerName}? You will no longer see their posts.`)) {
+    if (true) {
       try {
         await addDoc(collection(db, 'blocks'), {
           blockerId: user.uid,
@@ -261,7 +273,7 @@ export default function PostDetailPage() {
                 fill 
                 className="object-contain"
                 referrerPolicy="no-referrer"
-              />
+              sizes="(max-width: 768px) 100vw, 33vw" />
            </motion.div>
 
            {/* Thumbnail Rail - Only if multple images */}
@@ -273,7 +285,7 @@ export default function PostDetailPage() {
                    onClick={() => setActiveImageIndex(i)}
                    className={`relative w-14 h-14 rounded-lg overflow-hidden shrink-0 transition-all ${activeImageIndex === i ? 'ring-2 ring-white scale-110 z-10' : 'opacity-60 hover:opacity-100'}`}
                  >
-                   <Image src={url} alt={`Preview ${i}`} fill className="object-cover" referrerPolicy="no-referrer" />
+                   <Image src={url} alt={`Preview ${i}`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" referrerPolicy="no-referrer" />
                  </button>
                ))}
              </div>
@@ -338,6 +350,29 @@ export default function PostDetailPage() {
                    <p className="text-sm text-slate-500 font-medium">
                      Posted {formatDistanceToNow(post.createdAt?.toDate ? post.createdAt.toDate() : new Date(), { addSuffix: true })}
                    </p>
+                 </div>
+
+                 {/* Listing Attributes 2x2 Grid */}
+                 <div className="grid grid-cols-2 gap-y-4 gap-x-8 pt-4 border-t border-slate-100">
+                    <div>
+                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">School / Location</p>
+                       <p className="text-sm font-semibold text-slate-900">{post.school || post.suburb || 'N/A'}</p>
+                    </div>
+                    <div>
+                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Size</p>
+                       <p className="text-sm font-semibold text-slate-900">{post.size ? post.size + (post.sizeCategory ? ' (' + post.sizeCategory + ')' : '') : 'N/A'}</p>
+                    </div>
+                    <div>
+                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Condition</p>
+                       <div className="flex items-center gap-1.5">
+                         <div className={'w-2 h-2 rounded-full ' + (post.condition?.includes('New') ? 'bg-emerald-500' : post.condition?.includes('Excellent') ? 'bg-teal-500' : 'bg-slate-400')}></div>
+                         <p className="text-sm font-semibold text-slate-900">{post.condition || 'N/A'}</p>
+                       </div>
+                    </div>
+                    <div>
+                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Category</p>
+                       <p className="text-sm font-semibold text-slate-900">{post.category || 'N/A'}</p>
+                    </div>
                  </div>
               </div>
 
@@ -434,13 +469,14 @@ export default function PostDetailPage() {
 
               {/* Description */}
               <div className="space-y-3">
-                 <h3 className="text-lg font-bold text-slate-900">Description</h3>
+                 <h3 className="text-lg font-bold text-slate-900">Additional Comments</h3>
                  <p className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap">
                    {post.description}
                  </p>
                  <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+                    <span className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 uppercase tracking-tighter">Size: {post.sizeCategory ? `${post.sizeCategory} - ${post.size || 'N/A'}` : (post.size || 'N/A')}</span>
+                    <span className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 uppercase tracking-tighter">Condition: {post.condition}</span>
                     <span className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 uppercase tracking-tighter">Category: {post.category}</span>
-                    <span className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 uppercase tracking-tighter">Condition: Like New</span>
                  </div>
               </div>
 
@@ -547,7 +583,7 @@ export default function PostDetailPage() {
               fill
               className="object-contain"
               referrerPolicy="no-referrer"
-            />
+            sizes="(max-width: 768px) 100vw, 33vw" />
           </motion.div>
           
           {images.length > 1 && (

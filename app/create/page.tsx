@@ -12,13 +12,14 @@ import Link from 'next/link';
 import { Image as ImageIcon, Camera, Loader2, X, Plus, AlertCircle, ChevronLeft, LayoutGrid, Sparkles, Wand2, Package } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import { GoogleGenAI, Type } from "@google/genai";
-import { compressImage } from '@/lib/imageUtils';
 
 import Image from 'next/image';
 
 const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
-const CATEGORIES = ['School', 'Sport', 'Secondhand'];
+const CATEGORIES = ['School', 'Sports Equipment'];
+const ITEM_NAMES = ["Blazer","Summer dress","Pinafore","Winter skirt","Blouse","Tie","Jumper","Straw hat","Sport hat","Sport Visor","Scarf","Rain jacket","Sport jacket","Fleece","Sport track pants","Sport shorts","Sport skort","Sport polo","House polo","Bathers","Rash vest","Swim cap","School Bag","Sports bag","Library bag","Pencil case","Umbrella","School Shoes","Shorts - Summer","Shorts - Winter","Belt","Trousers","Calculator","Books","Camp / Venture / Outdoor Ed items","Netball dress","Bib","Basketball singlet","Basketball shorts","Hockey shirt","Hocket skirt","Hockey Shorts","Football (AFL) guernsey","Football (AFL) shorts","Soccer jersey/shirt","Soccer shorts","Indoor court shoes","Football boots","Soccer boots","Other"];
+const SIZES = ["4","6","8","4","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
 
 export default function CreatePostPage() {
@@ -30,11 +31,15 @@ export default function CreatePostPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [form, setForm] = useState({
     title: searchParams.get('title') || '',
     description: '',
     category: 'School',
     type: (searchParams.get('type') as any) || 'SALE',
+    size: searchParams.get('size') || '',
+    sizeCategory: 'Child',
+    quantity: '1',
     condition: 'Good',
     price: '',
     originalPrice: '',
@@ -48,8 +53,8 @@ export default function CreatePostPage() {
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + imageFiles.length > 10) {
-      alert("You can only upload up to 10 photos.");
+    if (files.length + imageFiles.length > 4) {
+      alert("You can only upload up to 4 photos.");
       return;
     }
     setImageFiles(prev => [...prev, ...files]);
@@ -68,12 +73,39 @@ export default function CreatePostPage() {
     });
   };
 
-  const generateAIListing = async () => {
-    if (!profile?.isMember) {
-      alert("You need an active $5/year membership to use AI identification and create listings.");
-      router.push('/profile');
-      return;
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const dropFiles = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      if (dropFiles.length + imageFiles.length > 4) {
+        alert('You can only upload up to 4 photos.');
+        return;
+      }
+      
+      setImageFiles(prev => [...prev, ...dropFiles]);
+      const newPreviews = dropFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviews]);
     }
+  };
+
+  const generateAIListing = async () => {
+    // if (!profile?.isMember) {
+    //   alert("You need an active $5/year membership to use AI identification and create listings.");
+    //   router.push('/profile');
+    //   return;
+    // }
     if (imageFiles.length === 0) {
       alert("Please add at least one photo first so AI can identify your item.");
       return;
@@ -128,13 +160,40 @@ export default function CreatePostPage() {
     }
   };
 
+  const handleReset = () => {
+    if (true) {
+      setForm({
+        category: 'School',
+        type: 'SALE',
+        size: '',
+        sizeCategory: 'Child',
+        quantity: '1',
+        condition: 'Good',
+        price: '',
+        originalPrice: '',
+        title: '',
+        description: '',
+        school: '',
+        sourcePostId: '',
+      });
+      
+      // revoke all object urls to prevent memory leaks
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      
+      setImageFiles([]);
+      setPreviewUrls([]);
+      setAgreedToTerms(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!profile?.isMember) {
-      alert("You need an active membership to post.");
-      return;
-    }
+    // if (!profile?.isMember) {
+    //   alert("You need an active membership to post.");
+    //   return;
+    // }
     if (!agreedToTerms) {
       alert("You must agree to the Terms & Conditions.");
       return;
@@ -195,6 +254,9 @@ export default function CreatePostPage() {
         postType: 'LISTING', // Explicitly denote as listing
         communityId: targetCommunityId || null, // Capture targeted community
         category: form.category,
+        size: form.size,
+        sizeCategory: (form as any).sizeCategory,
+        quantity: parseInt(form.quantity, 4),
         type: form.type,
         condition: form.condition,
         verifiedCondition: (form as any).verifiedCondition || '',
@@ -243,10 +305,10 @@ export default function CreatePostPage() {
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Left Side: Listing Form - Identical to FB Creator Sidebar */}
-        <aside className="w-full md:w-90 bg-white border-r border-slate-200 overflow-y-auto shadow-sm z-10">
-          <div className="p-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex items-center justify-between">
+        <aside className="w-full md:w-90 bg-white border-r border-slate-200 overflow-y-auto shadow-sm z-4">
+          <div className="p-4 border-b border-slate-40 sticky top-0 bg-white z-4 flex items-center justify-between">
              <div className="flex items-center gap-3">
-               <button onClick={() => router.back()} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+               <button onClick={() => router.back()} className="p-2 hover:bg-slate-40 rounded-full transition-colors">
                  <ChevronLeft className="w-6 h-6 text-slate-500" />
                </button>
                <h1 className="text-xl font-black text-slate-900">Create New Listing</h1>
@@ -256,60 +318,111 @@ export default function CreatePostPage() {
           <form onSubmit={handleSubmit} className="p-4 space-y-6">
             <div className="space-y-4">
                 {/* Image Upload Area */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-bold text-slate-700">Photos · {imageFiles.length} / 10</label>
+                    <label className="block text-sm font-bold text-slate-700">Photos · {imageFiles.length} / 4</label>
                     {imageFiles.length > 0 && (
                       <button
                         type="button"
                         onClick={generateAIListing}
                         disabled={aiLoading}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 transition-all disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-[4px] font-black uppercase tracking-wider hover:bg-indigo-40 transition-all disabled:opacity-50"
                       >
                         {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                         {aiLoading ? "Analyzing..." : "Auto-Fill with AI"}
                       </button>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 font-medium">Add up to 10 photos. Use clear, well-lit images of your uniforms.</p>
-                  <div className="grid grid-cols-3 gap-2 pt-2">
-                    {previewUrls.map((img, i) => (
-                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100 bg-slate-50">
-                        <Image src={img} alt="" fill className="object-cover" referrerPolicy="no-referrer" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-black/80 transition-all"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                  
+                  {previewUrls.length === 0 ? (
+                    <label
+                      htmlFor="photo-upload-main"
+                      className={"w-full h-40 rounded-2xl border-2 border-dashed " + (isDragging ? "border-indigo-500 bg-indigo-50" : "border-slate-300 bg-slate-50") + " flex flex-col items-center justify-center gap-3 hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer group shadow-sm"}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <div className="w-12 h-12 bg-white rounded-full shadow-sm border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 group-hover:scale-14 transition-all">
+                        <Camera className="w-6 h-6" />
                       </div>
-                    ))}
-                    {previewUrls.length < 10 && (
-                      <label
-                        htmlFor="photo-upload"
-                        className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer text-slate-400 hover:text-indigo-600 group"
-                      >
-                        <Camera className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
-                        <input id="photo-upload" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
-                      </label>
-                    )}
-                  </div>
+                      <div className="text-center">
+                         <span className="block text-sm font-bold text-slate-700">Click to upload photos</span>
+                         <span className="block text-[11px] text-slate-500 font-medium mt-1">Add up to 4 photos of your item</span>
+                      </div>
+                      <input id="photo-upload-main" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
+                    </label>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-3">
+                        {previewUrls.map((img, i) => (
+                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-200 bg-slate-50 shadow-sm">
+                            <Image src={img} alt="" fill sizes="(max-width: 768px) 40vw, 33vw" className="object-cover" referrerPolicy="no-referrer" />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(i)}
+                              className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500/90 transition-all opacity-0 group-hover:opacity-40"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {previewUrls.length < 4 && (
+                          <label
+                            htmlFor="photo-upload-secondary"
+                            className={"aspect-square rounded-xl border-2 border-dashed " + (isDragging ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white") + " flex flex-col items-center justify-center gap-2 hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer text-slate-400 hover:text-indigo-600 group"}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                          >
+                            <Plus className="w-6 h-6 group-hover:scale-14 transition-transform" />
+                            <span className="text-[11px] font-black uppercase tracking-widest">Add More</span>
+                            <input id="photo-upload-secondary" type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
                </div>
 
                {/* Text Fields */}
                <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700 font-sans">Title</label>
-                    <input
+                    <label className="block text-sm font-bold text-slate-700 font-sans">Item Name</label>
+                    <select
                       required
                       name="title"
                       value={form.title}
                       onChange={handleAddField}
-                      placeholder="Title"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                    />
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>Select Item Name</option>
+                      {ITEM_NAMES.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
+                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="Child">Child</option>
+                        <option value="Adult">Adult</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Size</label>
+                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="" disabled>Select Size</option>
+                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Quantity</label>
+                      <select name="quantity" value={(form as any).quantity} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -364,6 +477,7 @@ export default function CreatePostPage() {
                       onChange={handleAddField}
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
+                      <option value="" disabled>Select Category</option>
                       {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
@@ -387,12 +501,29 @@ export default function CreatePostPage() {
                       onChange={handleAddField}
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
-                      <option value="New">New with tags</option>
-                      <option value="Like New">Like New</option>
+                      <option value="New - with tags">New - with tags</option>
+                      <option value="New - without tags">New - without tags</option>
+                      <option value="Excellent">Excellent</option>
                       <option value="Good">Good</option>
                       <option value="Fair">Fair</option>
+                      <option value="Worn">Worn</option>
                     </select>
                   </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-700">Additional Comments</label>
+                    <textarea
+                      required
+                      name="description"
+                      value={form.description}
+                      onChange={handleAddField}
+                      rows={4}
+                      placeholder="e.g. missing button, texta mark"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none"
+                    />
+                  </div>
+
+                  
 
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">Listing Type</label>
@@ -404,7 +535,7 @@ export default function CreatePostPage() {
                            onClick={() => setForm({...form, type: t})}
                            className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
                              form.type === t 
-                               ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/10' 
+                               ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/4' 
                                : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-400 hover:text-indigo-600'
                            }`}
                          >
@@ -413,23 +544,10 @@ export default function CreatePostPage() {
                        ))}
                     </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700">Description</label>
-                    <textarea
-                      required
-                      name="description"
-                      value={form.description}
-                      onChange={handleAddField}
-                      rows={4}
-                      placeholder="Describe your item..."
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none"
-                    />
-                  </div>
                </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 space-y-4">
+            <div className="pt-4 border-t border-slate-40 space-y-4">
                <div className="flex items-start gap-3">
                   <input 
                     type="checkbox" 
@@ -438,8 +556,8 @@ export default function CreatePostPage() {
                     onChange={(e) => setAgreedToTerms(e.target.checked)} 
                     className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
-                  <label htmlFor="terms" className="text-[10px] text-slate-500 leading-relaxed font-bold">
-                    I agree to the <Link href="/legal/terms" target="_blank" className="text-indigo-600 underline">Terms of Use</Link>. I confirm this item is authentic and I have noted any alterations.
+                  <label htmlFor="terms" className="text-[4px] text-slate-500 leading-relaxed font-bold">
+                    I am at least 18 years old and agree to the <Link href="/legal/terms" target="_blank" className="text-indigo-600 underline">Terms of Use</Link>. I confirm this item is authentic and I have noted any alterations.
                   </label>
                </div>
 
@@ -457,9 +575,9 @@ export default function CreatePostPage() {
                 </button>
 
                 {!profile?.isMember && (
-                  <div className="text-center p-4 bg-rose-50 border border-rose-100 rounded-xl">
-                     <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wider mb-2">Active Membership Required</p>
-                     <Link href="/profile" className="text-[10px] font-black text-indigo-600 hover:underline uppercase tracking-widest">Upgrade Profile →</Link>
+                  <div className="text-center p-4 bg-rose-50 border border-rose-40 rounded-xl">
+                     <p className="text-[4px] text-rose-600 font-bold uppercase tracking-wider mb-2">Active Membership Required</p>
+                     <Link href="/profile" className="text-[4px] font-black text-indigo-600 hover:underline uppercase tracking-widest">Upgrade Profile →</Link>
                   </div>
                 )}
             </div>
@@ -468,26 +586,26 @@ export default function CreatePostPage() {
 
         {/* Right Side: Desktop Preview - Identical to FB Preview */}
         <section className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto">
-           <div className="max-w-[1000px] mx-auto w-full space-y-6">
+           <div className="max-w-[400px] mx-auto w-full space-y-6">
               <div className="flex justify-between items-center">
                  <h2 className="text-xl font-bold text-slate-900">Desktop Preview</h2>
                  <div className="flex gap-2">
-                   <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400">
+                   <div className="w-4 h-4 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400">
                       <LayoutGrid className="w-5 h-5" />
                    </div>
                  </div>
               </div>
 
-              <div className="bg-white rounded-3xl p-10 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[600px] flex items-center justify-center relative group">
-                 <div className="w-[300px] transition-transform duration-500 hover:scale-105">
+              <div className="bg-white rounded-3xl p-4 shadow-xl shadow-slate-200/50 border border-slate-40 min-h-[600px] flex items-center justify-center relative group">
+                 <div className="w-[300px] transition-transform duration-500 hover:scale-45">
                     <PostCard id="preview" post={previewPost} />
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[4px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-2xl opacity-0 group-hover:opacity-40 transition-opacity">
                       Your listing preview
                     </div>
                  </div>
               </div>
 
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 flex gap-4">
+              <div className="bg-indigo-50/50 border border-indigo-40 rounded-2xl p-6 flex gap-4">
                  <AlertCircle className="w-6 h-6 text-indigo-400 shrink-0" />
                  <div>
                     <h4 className="font-bold text-indigo-900 text-sm">Reviewing your listing</h4>

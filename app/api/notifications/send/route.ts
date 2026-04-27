@@ -1,38 +1,9 @@
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
+import { initFirebaseAdmin } from '@/lib/firebase-admin';
 
 // Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    const saVar = process.env.FIREBASE_SERVICE_ACCOUNT;
-    let serviceAccount = null;
-
-    if (saVar) {
-      try {
-        if (saVar.trim().startsWith('{')) {
-          // Direct JSON
-          serviceAccount = JSON.parse(saVar);
-        } else {
-          // Base64
-          serviceAccount = JSON.parse(Buffer.from(saVar, 'base64').toString());
-        }
-      } catch (parseError) {
-        console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT array:', parseError);
-      }
-    }
-
-    if (serviceAccount) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log('Firebase Admin initialized successfully');
-    } else {
-      console.warn('FIREBASE_SERVICE_ACCOUNT not configured. Push notifications will be skipped.');
-    }
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
+initFirebaseAdmin();
 
 export async function POST(req: Request) {
   if (!admin.apps.length) {
