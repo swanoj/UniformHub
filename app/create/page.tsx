@@ -256,7 +256,7 @@ export default function CreatePostPage() {
         category: form.category,
         size: form.size,
         sizeCategory: (form as any).sizeCategory,
-        quantity: parseInt(form.quantity, 4),
+        quantity: parseInt(form.quantity, 10),
         type: form.type,
         condition: form.condition,
         verifiedCondition: (form as any).verifiedCondition || '',
@@ -412,7 +412,7 @@ export default function CreatePostPage() {
                       <label className="block text-sm font-bold text-slate-700">Size</label>
                       <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
                         <option value="" disabled>Select Size</option>
-                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                        {SIZES.map((s, index) => <option key={`${s}-${index}`} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
