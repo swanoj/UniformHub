@@ -5,7 +5,12 @@ import { getAuth } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, Messaging } from 'firebase/messaging';
-import firebaseConfig from '@/firebase-applet-config.json';
+import firebaseAppletConfig from '@/firebase-applet-config.json';
+
+const firebaseConfig = {
+  ...firebaseAppletConfig,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId || 'sniperform-ads-dashboard',
+};
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 

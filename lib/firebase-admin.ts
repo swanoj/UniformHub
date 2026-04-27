@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 export function initFirebaseAdmin() {
   if (!admin.apps.length) {
     try {
-      const saVar = process.env.FIREBASE_SERVICE_ACCOUNT;
+      const saVar = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
       let serviceAccount = null;
 
       if (saVar) {
@@ -31,11 +31,11 @@ export function initFirebaseAdmin() {
               serviceAccount = JSON.parse(decodedString);
             } catch (e: any) {
               // Not a valid JSON object after base64 decoding
-              console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT (base64 decode resulted in invalid JSON). Check if it is a valid base64-encoded JSON string or direct JSON string.');
+              console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY (base64 decode resulted in invalid JSON). Check if it is a valid base64-encoded JSON string or direct JSON string.');
             }
           }
         } catch (parseError: any) {
-          console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT:', parseError.message);
+          console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', parseError.message);
         }
       }
 
@@ -45,7 +45,7 @@ export function initFirebaseAdmin() {
         });
         console.log('Firebase Admin initialized successfully');
       } else {
-        console.warn('FIREBASE_SERVICE_ACCOUNT not configured or invalid. Admin SDK will be skipped.');
+        console.warn('FIREBASE_SERVICE_ACCOUNT_KEY not configured or invalid. Admin SDK will be skipped.');
       }
     } catch (error: any) {
       console.error('Error initializing Firebase Admin:', error.message);

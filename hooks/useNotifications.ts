@@ -3,6 +3,7 @@ import { messaging, db } from '@/lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useUser } from '@/components/FirebaseProvider';
+import { urlBase64ToUint8Array } from '@/lib/vapid-key';
 
 export function useNotifications() {
   const { user } = useUser();
@@ -24,7 +25,22 @@ export function useNotifications() {
           }
 
           if (messaging) {
-            const token = await getToken(messaging, { vapidKey });
+            const serviceWorkerRegistration =
+              (await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')) ||
+              (await navigator.serviceWorker.register('/firebase-messaging-sw.js'));
+            const existingSubscription = await serviceWorkerRegistration.pushManager.getSubscription();
+
+            if (!existingSubscription) {
+              await serviceWorkerRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey),
+              });
+            }
+
+            const token = await getToken(messaging, {
+              vapidKey,
+              serviceWorkerRegistration,
+            });
 
             if (token) {
               console.log('FCM Token:', token);
