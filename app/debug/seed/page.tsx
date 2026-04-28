@@ -123,6 +123,7 @@ export default function SeedPage() {
       for (const post of DEMO_POSTS) {
         await addDoc(collection(db, 'posts'), {
           ...post,
+          quantity: Math.floor(Math.random() * 3) + 1,
           photoUrls: post.photos,
           ownerId: user.uid,
           ownerName: user.displayName || 'Demo User',

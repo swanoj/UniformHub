@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+import { TERMS_VERSION } from '@/lib/constants';
+import { ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 
 interface UserContextType {
   user: User | null;
@@ -21,21 +23,40 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState('');
   const [agreed18, setAgreed18] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
+  const [agreedToUpdate, setAgreedToUpdate] = useState(false);
 
   useEffect(() => {
-    let unsubscribeProfile: () => void;
+    let unsubscribeProfile: (() => void) | undefined;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        const userRef = doc(db, 'users', user.uid);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (nextUser) => {
+      setUser(nextUser);
+      if (!nextUser) {
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = undefined;
+        }
+        setProfile(null);
+        setShowTermsModal(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Ensure an auth token is available before the first Firestore read/write.
+        await nextUser.getIdToken();
+
+        const userRef = doc(db, 'users', nextUser.uid);
         const userDoc = await getDoc(userRef);
-        
+
         if (!userDoc.exists()) {
           const newProfile = {
-            displayName: user.displayName || 'Anonymous User',
-            email: user.email,
-            photoUrl: user.photoURL,
+            displayName: nextUser.displayName || 'Anonymous User',
+            email: nextUser.email,
+            photoUrl: nextUser.photoURL,
             onboarded: false,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -43,14 +64,39 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
           await setDoc(userRef, newProfile);
         }
 
-        unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data());
-          }
-          setLoading(false);
-        });
-      } else {
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+        }
+
+        unsubscribeProfile = onSnapshot(
+          userRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              setProfile(data);
+
+              // §17 Terms Version Check
+              if (data.onboarded !== false) {
+                if (data.termsAccepted?.version !== TERMS_VERSION) {
+                  setShowTermsModal(true);
+                } else {
+                  setShowTermsModal(false);
+                }
+              }
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('[FirebaseProvider] Profile subscription failed:', error);
+            setProfile(null);
+            setShowTermsModal(false);
+            setLoading(false);
+          },
+        );
+      } catch (error) {
+        console.error('[FirebaseProvider] Failed to bootstrap user profile:', error);
         setProfile(null);
+        setShowTermsModal(false);
         setLoading(false);
       }
     });
@@ -107,8 +153,77 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const handleAcceptUpdatedTerms = async () => {
+    if (!user || !agreedToUpdate) return;
+    setAcceptingTerms(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        termsAccepted: {
+          version: TERMS_VERSION,
+          acceptedAt: serverTimestamp()
+        },
+        updatedAt: serverTimestamp()
+      });
+      setShowTermsModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update. Please try again.');
+    } finally {
+      setAcceptingTerms(false);
+    }
+  };
+
   return (
-    <UserContext.Provider value={{ user, loading, profile: profile ? { ...profile, isMember: true } : null }}>
+    <UserContext.Provider value={{ 
+      user, 
+      loading, 
+      profile 
+    }}>
+      {showTermsModal && user && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="bg-indigo-600 p-10 text-white relative">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <ShieldCheck className="w-32 h-32" />
+              </div>
+              <h2 className="text-3xl font-black tracking-tight mb-2">Terms Updated</h2>
+              <p className="text-indigo-100 font-medium">We&apos;ve updated our community guidelines to version {TERMS_VERSION}. Please review them to continue.</p>
+            </div>
+            
+            <div className="p-10 space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="mt-1">
+                    <input 
+                      type="checkbox" 
+                      id="update-agree" 
+                      checked={agreedToUpdate}
+                      onChange={(e) => setAgreedToUpdate(e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+                  <label htmlFor="update-agree" className="text-sm text-slate-600 leading-relaxed font-medium cursor-pointer">
+                    I have read and agree to the <a href="/legal/terms" target="_blank" className="text-indigo-600 font-bold hover:underline">updated Terms & Conditions</a>. I understand these rules apply to all listings and safety precautions.
+                  </label>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleAcceptUpdatedTerms}
+                disabled={!agreedToUpdate || acceptingTerms}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 disabled:opacity-50"
+              >
+                {acceptingTerms ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <>
+                    <span>Accept & Continue</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {children}
     </UserContext.Provider>
   );

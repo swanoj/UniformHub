@@ -2,16 +2,16 @@ import * as admin from 'firebase-admin';
 import { readFileSync } from 'fs';
 
 const firebaseConfig = JSON.parse(readFileSync('./firebase-applet-config.json', 'utf-8'));
+const FIRESTORE_DATABASE_ID = 'ai-studio-763f001b-7206-4556-b5c7-087611c74887';
 
 admin.initializeApp({
-  projectId: firebaseConfig.projectId,
-  databaseURL: `https://(default).firebaseio.com` // might not be needed for just firestore
+  projectId: firebaseConfig.projectId
 });
 
 const db = admin.firestore();
-// Need to set the specific databaseId if AI Studio uses a named database
+// Route utility queries to the same named Firestore database used by the app.
 db.settings({
-  databaseId: firebaseConfig.firestoreDatabaseId
+  databaseId: FIRESTORE_DATABASE_ID
 });
 
 async function run() {

@@ -38,7 +38,8 @@ const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 
 function SchoolHubSection({ userSchool, posts }: { userSchool: string, posts: any[] }) {
-  const schoolPosts = posts.filter(p => p.school?.toLowerCase().includes(userSchool.toLowerCase())).slice(0, 4);
+  const schoolPosts = posts.filter(p => p.status === 'ACTIVE' && p.school?.toLowerCase().includes(userSchool.toLowerCase())).slice(0, 4);
+
   if (!userSchool || schoolPosts.length === 0) return null;
 
   return (

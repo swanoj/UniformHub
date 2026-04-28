@@ -24,10 +24,10 @@ export default function EditPostPage() {
   const { user, profile } = useUser();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
-  const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [postRef, setPostRef] = useState<any>(null);
   
@@ -70,6 +70,7 @@ export default function EditPostPage() {
             originalPrice: data.originalPrice ? String(data.originalPrice) : '',
             school: data.school || '',
           });
+          setQuantity(data.quantity || 1);
           setExistingPhotos(data.photoUrls || []);
         } else {
           alert('Post not found.');
@@ -144,10 +145,6 @@ export default function EditPostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !postRef) return;
-    // if (!profile?.isMember) {
-    //   alert("You need an active membership to edit posts.");
-    //   return;
-    // }
     if (!agreedToTerms) {
       alert("You must agree to the Terms & Conditions.");
       return;
@@ -184,6 +181,7 @@ export default function EditPostPage() {
         type: form.type,
         size: form.size,
         sizeCategory: (form as any).sizeCategory,
+        quantity: quantity,
         condition: form.condition,
         school: form.school || profile?.school || '',
         price: form.type === 'FREE' ? '' : form.price,
@@ -425,7 +423,29 @@ export default function EditPostPage() {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-3 pt-2">
+                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-[0.2em] pl-1">
+                      Quantity Available
+                    </label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setQuantity(num)}
+                          className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                            quantity === num
+                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                              : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2">
                     <label className="block text-sm font-bold text-slate-700">Listing Type</label>
                     <div className="flex gap-2">
                        {TYPES.map(t => (
@@ -448,6 +468,7 @@ export default function EditPostPage() {
             </div>
 
             <div className="pt-4 border-t border-slate-100 space-y-4">
+
                <button
                   type="submit"
                   disabled={loading}

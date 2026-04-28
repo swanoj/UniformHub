@@ -60,6 +60,13 @@ export function PostCard({ post, id }: PostCardProps) {
             </span>
           </div>
         )}
+        {post.quantity > 1 && (
+           <div className="absolute bottom-2 right-2">
+             <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-900/80 text-white uppercase tracking-widest shadow-sm">
+               {post.quantity} Available
+             </span>
+           </div>
+        )}
       </Link>
 
       <div className="flex flex-col px-0.5 pb-2">

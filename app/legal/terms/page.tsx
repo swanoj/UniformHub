@@ -18,8 +18,8 @@ export default function TermsPage() {
             <p className="text-slate-600 leading-relaxed">To use UniformHub, you must be at least 18 years old. By creating an account, you confirm that you meet this minimum age requirement.</p>
           </section>
           <section className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">3. Membership, Fees &amp; Payments</h2>
-            <p className="text-slate-600 leading-relaxed">A valid membership is required to use UniformHub. Memberships are for personal use and reasonable quantities of secondhand items.</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-4">3. Platform Usage &amp; Safety</h2>
+            <p className="text-slate-600 leading-relaxed">UniformHub is currently a community-driven platform for the exchange of secondhand school items. Users must act in good faith and follow community safety guidelines at all times.</p>
           </section>
           <section className="mb-8">
             <h2 className="text-xl font-bold text-slate-900 mb-4">6. Listings &amp; Accuracy</h2>
