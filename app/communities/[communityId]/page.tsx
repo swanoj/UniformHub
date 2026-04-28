@@ -256,7 +256,7 @@ export default function CommunityPage() {
             {/* Cover Photo Area */}
             <div className="h-[350px] w-full bg-slate-200 relative md:rounded-b-xl overflow-hidden shadow-sm">
                {community.coverPhoto ? (
-                 <img src={community.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                 <img className="w-full h-full object-cover" src={community.coverPhoto} alt="cover" />
                ) : (
                  <div className="w-full h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                )}

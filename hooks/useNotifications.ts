@@ -3,7 +3,6 @@ import { messaging, db } from '@/lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useUser } from '@/components/FirebaseProvider';
-import { urlBase64ToUint8Array } from '@/lib/vapid-key';
 
 export function useNotifications() {
   const { user } = useUser();
@@ -11,6 +10,7 @@ export function useNotifications() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !messaging || !user) return;
+    const msg = messaging; // Capture to narrow type
 
     const requestPermission = async () => {
       try {
@@ -24,31 +24,21 @@ export function useNotifications() {
             return;
           }
 
-          if (messaging) {
-            const serviceWorkerRegistration =
-              (await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')) ||
-              (await navigator.serviceWorker.register('/firebase-messaging-sw.js'));
-            const existingSubscription = await serviceWorkerRegistration.pushManager.getSubscription();
+          let swRegistration = null;
+          if ('serviceWorker' in navigator) {
+            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          }
 
-            if (!existingSubscription) {
-              await serviceWorkerRegistration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidKey),
-              });
-            }
+          const token = await getToken(msg, { 
+            vapidKey: vapidKey,
+            serviceWorkerRegistration: swRegistration || undefined
+          });
 
-            const token = await getToken(messaging, {
-              vapidKey,
-              serviceWorkerRegistration,
+          if (token) {
+            console.log('FCM Token:', token);
+            await updateDoc(doc(db, 'users', user.uid), {
+              fcmTokens: arrayUnion(token)
             });
-
-            if (token) {
-              console.log('FCM Token:', token);
-              // Store token in user profile for targeting
-              await updateDoc(doc(db, 'users', user.uid), {
-                fcmTokens: arrayUnion(token)
-              });
-            }
           }
         }
       } catch (error) {
@@ -58,20 +48,17 @@ export function useNotifications() {
 
     requestPermission();
 
-    if (messaging) {
-      const unsubscribe = onMessage(messaging, (payload) => {
-        console.log('Message received. ', payload);
-        // Handle foreground message if needed
-        if (payload.notification) {
-           new Notification(payload.notification.title || 'New Message', {
-             body: payload.notification.body,
-             icon: '/favicon.ico'
-           });
-        }
-      });
+    const unsubscribe = onMessage(msg, (payload) => {
+      console.log('Message received. ', payload);
+      if (payload.notification) {
+         new Notification(payload.notification.title || 'New Message', {
+           body: payload.notification.body,
+           icon: '/favicon.ico'
+         });
+      }
+    });
 
-      return () => unsubscribe();
-    }
+    return () => unsubscribe();
   }, [user]);
 
   return { permission };

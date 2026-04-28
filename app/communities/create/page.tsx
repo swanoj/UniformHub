@@ -1,3 +1,4 @@
+import Image from "next/image";
 'use client';
 
 import React, { useState } from 'react';
@@ -121,7 +122,7 @@ export default function CreateCommunityPage() {
                     />
                     {coverPhotoPreview ? (
                       <>
-                        <img src={coverPhotoPreview} alt="Cover preview" className="w-full h-full object-cover" />
+                        <img className="w-full h-full object-cover" src={coverPhotoPreview} alt="cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <span className="text-white font-medium flex items-center gap-2">
                             <ImageIcon className="w-4 h-4" /> Change Photo

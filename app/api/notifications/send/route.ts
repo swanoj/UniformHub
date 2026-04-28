@@ -1,37 +1,55 @@
 import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 
-// Initialize Firebase Admin if not already initialized
+// Initialize Firebase Admin if it hasn't been initialized
 initFirebaseAdmin();
 
 export async function POST(req: Request) {
-  if (!admin.apps.length) {
-    return NextResponse.json({ error: 'FCM not configured' }, { status: 503 });
-  }
-
   try {
-    const { tokens, title, body, data } = await req.json();
-
-    if (!tokens || !tokens.length) {
-      return NextResponse.json({ error: 'No tokens provided' }, { status: 400 });
+    if (!admin.apps.length) {
+      return NextResponse.json(
+        { error: 'Firebase Admin not configured on server. Missing FIREBASE_SERVICE_ACCOUNT_KEY env var.' },
+        { status: 500 }
+      );
     }
 
-    const message = {
-      notification: { title, body },
-      data: data || {},
+    const { tokens, title, body, icon, link, data } = await req.json();
+
+    if (!tokens || !tokens.length) {
+      return NextResponse.json({ error: 'No FCM tokens provided.' }, { status: 400 });
+    }
+
+    const message: any = {
+      notification: {
+        title: title || 'New Notification',
+        body: body || '',
+      },
+      webpush: {
+        notification: {
+          icon: icon || '/favicon.ico',
+        },
+        fcmOptions: {
+          link: link || '/',
+        },
+      },
       tokens: tokens,
     };
 
+    if (data) {
+      // FCM data must only contain string values
+      const stringifiedData: Record<string, string> = {};
+      for (const [key, value] of Object.entries(data)) {
+        stringifiedData[key] = String(value);
+      }
+      message.data = stringifiedData;
+    }
+
     const response = await admin.messaging().sendEachForMulticast(message);
     
-    return NextResponse.json({ 
-      success: true, 
-      successCount: response.successCount, 
-      failureCount: response.failureCount 
-    });
-  } catch (error) {
-    console.error('Error sending FCM message:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, response });
+  } catch (error: any) {
+    console.error('Error sending notification:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

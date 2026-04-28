@@ -1,3 +1,4 @@
+import Image from "next/image";
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -238,7 +239,7 @@ export default function CommunitySettingsPage() {
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                     {coverPhotoPreview ? (
                       <>
-                        <img src={coverPhotoPreview} alt="Cover" className="w-full h-full object-cover" />
+                        <img className="w-full h-full object-cover" src={coverPhotoPreview || community?.coverPhoto} alt="cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <span className="text-white font-medium flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Change</span>
                         </div>
@@ -291,7 +292,7 @@ export default function CommunitySettingsPage() {
                   <div key={member.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden text-center leading-10 font-bold text-slate-500 uppercase">
-                         {member.photoUrl ? <img src={member.photoUrl} alt="" className="w-full h-full object-cover"/> : member.displayName[0]}
+                         {member.photoUrl ? <img className="w-full h-full object-cover" src={member.photoUrl} alt="member" /> : member.displayName[0]}
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 text-sm">{member.displayName}</div>
@@ -347,7 +348,7 @@ export default function CommunitySettingsPage() {
                            <div className="flex gap-2 mt-2">
                              {post.photoUrls.slice(0,3).map((url: string, i: number) => (
                                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100">
-                                 <img src={url} alt="" className="w-full h-full object-cover" />
+                                 <img className="w-full h-full object-cover" src={url} alt="post" />
                                </div>
                              ))}
                              {post.photoUrls.length > 3 && <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">+{post.photoUrls.length-3}</div>}

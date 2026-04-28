@@ -4,13 +4,13 @@ import admin from 'firebase-admin';
 // Initialize Firebase Admin if it hasn't been initialized
 if (!admin.apps.length) {
   try {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (serviceAccountJson) {
       admin.initializeApp({
         credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
       });
     } else {
-      console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is not defined. Admin not initialized.");
+      console.warn("FIREBASE_SERVICE_ACCOUNT is not defined. Admin not initialized.");
     }
   } catch (error) {
     console.error("Firebase Admin Error: ", error);
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   try {
     if (!admin.apps.length) {
       return NextResponse.json(
-        { error: 'Firebase Admin not configured on server. Missing FIREBASE_SERVICE_ACCOUNT_KEY env var.' },
+        { error: 'Firebase Admin not configured on server. Missing FIREBASE_SERVICE_ACCOUNT env var.' },
         { status: 500 }
       );
     }
