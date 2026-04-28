@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useUser } from '@/components/FirebaseProvider';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot, updateDoc, doc, where, getDocs, deleteDoc } from 'firebase/firestore';
-import { signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signOut, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 import { Search, PlusSquare, MessageSquare, User, LogOut, ShoppingBag, Database, Users, Bell, Check, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
@@ -52,8 +52,17 @@ export function Navbar() {
     }
   };
 
-  const handleLogin = async () => {
+  const handleLoginGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed", error);
+    }
+  };
+
+  const handleLoginApple = async () => {
+    const provider = new OAuthProvider('apple.com');
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
@@ -251,12 +260,20 @@ export function Navbar() {
                  </button>
               </div>
             ) : (
-              <button
-                onClick={handleLogin}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/10 active:scale-95"
-              >
-                Log In
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleLoginGoogle}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/10 active:scale-95"
+                >
+                  Google Login
+                </button>
+                <button
+                  onClick={handleLoginApple}
+                  className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                >
+                  Apple Login
+                </button>
+              </div>
             )}
           </div>
         </div>

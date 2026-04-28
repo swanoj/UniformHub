@@ -245,7 +245,10 @@ export default function CreatePostPage() {
         }
       }
 
-      const postData = {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 56); // 8 weeks
+
+        const postData = {
         ownerId: user.uid,
         ownerName: profile?.displayName || user.displayName || 'Seller',
         ownerPhotoUrl: profile?.photoUrl || user.photoURL || '',
@@ -268,6 +271,7 @@ export default function CreatePostPage() {
         searchTerms: `${form.title} ${form.description} ${form.school} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        expiresAt: expiresAt.toISOString(),
         suburb: form.school || profile?.suburb || 'Local',
         sourcePostId: form.sourcePostId || null,
       };

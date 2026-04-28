@@ -354,14 +354,23 @@ export default function CommunityPage() {
                                  <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 text-lg font-bold">U</div>
                               )}
                             </div>
-                            <input 
-                               type="text" 
-                               value={newPostText}
-                               onChange={(e) => setNewPostText(e.target.value)}
-                               onKeyDown={(e) => { if(e.key === 'Enter') submitDiscussion() }}
-                               placeholder="Write something to the group..." 
-                               className="flex-1 bg-slate-100 border-none rounded-full px-4 text-sm font-medium focus:ring-2 focus:ring-indigo-600 placeholder:text-slate-500"
-                            />
+                             <div className="flex-1 relative">
+                               <input 
+                                  type="text" 
+                                  value={newPostText}
+                                  onChange={(e) => setNewPostText(e.target.value)}
+                                  onKeyDown={(e) => { if(e.key === 'Enter') submitDiscussion() }}
+                                  placeholder="Write something to the group..." 
+                                  className="w-full bg-slate-100 border-none rounded-full py-3 px-4 pr-12 text-sm font-medium focus:ring-2 focus:ring-indigo-600 placeholder:text-slate-500"
+                               />
+                               <label className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-200 rounded-full cursor-pointer transition-colors">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                  <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx" onChange={(e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    if (files.length > 0) alert('Group Chat Attachment UI to be fully implemented: ' + files[0].name);
+                                  }}/>
+                               </label>
+                             </div>
                          </div>
                          <div className="h-[1px] bg-slate-100 my-3"></div>
                            <div className="flex gap-2 items-center">
