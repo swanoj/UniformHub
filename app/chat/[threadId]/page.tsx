@@ -8,9 +8,7 @@ import { useUser } from '@/components/FirebaseProvider';
 import { Navbar } from '@/components/Navbar';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { Send, User, ChevronLeft, Info, ShoppingBag, Search, MoreVertical, ShieldAlert, Image as ImageIcon, Paperclip, X } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { Send, User, ChevronLeft, Info, ShoppingBag, Search, MoreVertical, ShieldAlert } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
 import { useBlocks } from '@/hooks/useBlocks';
@@ -26,12 +24,8 @@ export default function ChatPage() {
   const [post, setPost] = useState<any>(null);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch all user threads for the left sidebar
   useEffect(() => {
@@ -95,49 +89,23 @@ export default function ChatPage() {
     };
   }, [threadId, user, router]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!newMessage.trim() && !selectedFile) || !user || !threadId) return;
+    if (!newMessage.trim() || !user || !threadId) return;
 
     const text = newMessage.trim();
     setNewMessage('');
-    setImagePreview(null);
-    const fileToUpload = selectedFile;
-    setSelectedFile(null);
     setSending(true);
 
     try {
-      let photoUrl = null;
-      if (fileToUpload) {
-        setUploading(true);
-        const imageRef = ref(storage, `chats/${threadId}/${Date.now()}_${fileToUpload.name}`);
-        const uploadResult = await uploadBytes(imageRef, fileToUpload);
-        photoUrl = await getDownloadURL(uploadResult.ref);
-        setUploading(false);
-      }
-
-      const messageData: any = {
+      await addDoc(collection(db, 'threads', threadId as string, 'messages'), {
         senderId: user.uid,
+        text,
         createdAt: serverTimestamp(),
-      };
-
-      if (text) messageData.text = text;
-      if (photoUrl) messageData.photoUrl = photoUrl;
-
-      await addDoc(collection(db, 'threads', threadId as string, 'messages'), messageData);
+      });
 
       await updateDoc(doc(db, 'threads', threadId as string), {
-        lastMessageText: text || 'Sent a photo',
+        lastMessageText: text,
         lastMessageAt: serverTimestamp(),
         lastMessageSenderId: user.uid,
         lastMessageRead: false
@@ -248,14 +216,6 @@ export default function ChatPage() {
              </div>
            </header>
 
-           {/* §8 Legal Disclaimer Banner */}
-           <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center gap-3">
-             <Info className="w-4 h-4 text-amber-600 shrink-0" />
-             <p className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">
-               Safety Reminder: Items must be collected within 5 days of agreement per §8 of our T&Cs.
-             </p>
-           </div>
-
            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg) => {
                 const isMe = msg.senderId === user?.uid;
@@ -263,23 +223,12 @@ export default function ChatPage() {
                 return (
                   <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                       <div className={`px-4 py-2.5 rounded-2xl text-[15px] shadow-sm overflow-hidden ${
+                      <div className={`px-4 py-2.5 rounded-2xl text-[15px] shadow-sm ${
                         isMe 
                           ? 'bg-indigo-600 text-white rounded-tr-sm' 
                           : 'bg-white text-slate-800 rounded-tl-sm border border-slate-200'
                       }`}>
-                        {msg.photoUrl && (
-                          <div className="mb-2 relative aspect-video rounded-lg overflow-hidden bg-slate-200 min-w-[200px]">
-                            <Image 
-                              src={msg.photoUrl} 
-                              alt="Attached photo" 
-                              fill 
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        {msg.text && <p className="leading-snug">{msg.text}</p>}
+                        <p className="leading-snug">{msg.text}</p>
                       </div>
                       <span className="text-[9px] font-black text-slate-400 mt-1 uppercase tracking-widest">{time}</span>
                     </div>
@@ -289,61 +238,26 @@ export default function ChatPage() {
               <div ref={messagesEndRef} />
            </div>
 
-            <div className="p-4 bg-white border-t border-slate-200 space-y-3">
-             <AnimatePresence>
-               {imagePreview && (
-                 <motion.div 
-                   initial={{ opacity: 0, y: 10 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   exit={{ opacity: 0, scale: 0.95 }}
-                   className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-indigo-500 shadow-lg"
-                 >
-                   <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-                   <button 
-                     onClick={() => { setSelectedFile(null); setImagePreview(null); }}
-                     className="absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70"
-                   >
-                     <X className="w-3 h-3" />
-                   </button>
-                 </motion.div>
-               )}
-             </AnimatePresence>
-
-             <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
-               <input 
-                 type="file" 
-                 ref={fileInputRef}
-                 onChange={handleImageSelect}
-                 accept="image/*"
-                 className="hidden"
-               />
-               <button 
-                 type="button"
-                 onClick={() => fileInputRef.current?.click()}
-                 className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-all shrink-0"
-               >
-                 <ImageIcon className="w-6 h-6" />
-               </button>
-               
+           <div className="p-4 bg-white border-t border-slate-200">
+             <form onSubmit={handleSendMessage} className="flex gap-2">
                <div className="flex-1 relative">
                  <input 
                    type="text" 
                    value={newMessage}
                    onChange={(e) => setNewMessage(e.target.value)}
-                   disabled={uploading}
-                   placeholder={uploading ? "Uploading image..." : "Type a message..."} 
-                   className="w-full bg-slate-100 border-none rounded-full py-3 px-5 text-sm focus:ring-2 focus:ring-indigo-500 font-medium pr-12 transition-all shadow-inner disabled:opacity-50"
+                   placeholder="Type a message..." 
+                   className="w-full bg-slate-100 border-none rounded-full py-3 px-5 text-sm focus:ring-2 focus:ring-indigo-500 font-medium pr-12 transition-all shadow-inner"
                  />
                  <button 
                    type="submit"
-                   disabled={(!newMessage.trim() && !selectedFile) || sending || uploading}
+                   disabled={!newMessage.trim() || sending}
                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center disabled:opacity-30 transition-all hover:bg-indigo-700 active:scale-90"
                  >
                    <Send className="w-4 h-4 rotate-45 mr-0.5 mb-0.5" />
                  </button>
                </div>
              </form>
-            </div>
+           </div>
         </section>
 
         {/* Right Sidebar: Context Details */}

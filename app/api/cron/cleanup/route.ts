@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 
 // Initialize Firebase Admin if not already initialized
 initFirebaseAdmin();
-const FIRESTORE_DATABASE_ID = 'ai-studio-763f001b-7206-4556-b5c7-087611c74887';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization');
@@ -18,7 +16,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const db = getFirestore(FIRESTORE_DATABASE_ID);
+    const db = admin.firestore();
     const postsRef = db.collection('posts');
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);

@@ -1,399 +1,173 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/components/FirebaseProvider';
 import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  serverTimestamp, 
-  where,
-  getDoc,
-  getDocs
-} from 'firebase/firestore';
-import AdminTable from '@/components/AdminTable';
-import Image from 'next/image';
+import { collection, query, onSnapshot, updateDoc, doc, deleteDoc, where, orderBy, limit } from 'firebase/firestore';
+import { Navbar } from '@/components/Navbar';
+import { motion, AnimatePresence } from 'motion/react';
+import { Shield, Trash2, Ban, Flag, ExternalLink, ChevronRight, Search, Loader2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
-
-type TabType = 'listings' | 'users' | 'reports' | 'stats';
+import Image from 'next/image';
 
 export default function AdminPage() {
-  const { user } = useUser();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('listings');
-  const [loading, setLoading] = useState(true);
-  
-  // Data states
-  const [listings, setListings] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const { user, profile } = useUser();
+  const [posts, setPosts] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({
-    totalUsers: 0,
-    activeListings: 0,
-    flaggedListings: 0,
-    openReports: 0,
-    newUsersWeek: 0,
-    newListingsWeek: 0
-  });
+  const [loading, setLoading] = useState(true);
 
-  const [filterFlagged, setFilterFlagged] = useState(false);
+  // Simple admin check - in production you'd use a role field
+  const isAdmin = profile?.role === 'ADMIN' || user?.email === 'oliverjs090@gmail.com';
 
-  // 1. Mandatory Admin Gate
-  useEffect(() => {
-    async function checkAdmin() {
-      if (!user) {
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().isAdmin === true) {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
-      } catch (err) {
-        console.error("Error checking admin status:", err);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    }
-    checkAdmin();
-  }, [user]);
-
-  // 2. Data Fetching Logic
   useEffect(() => {
     if (!isAdmin) return;
 
-    // Listings Subscription
-    const listingsQuery = filterFlagged 
-      ? query(collection(db, 'posts'), where('status', '==', 'FLAGGED'), orderBy('createdAt', 'desc'))
-      : query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    const postsRef = collection(db, 'posts');
+    const q = query(postsRef, orderBy('createdAt', 'desc'), limit(50));
 
-    const unsubListings = onSnapshot(listingsQuery, (snapshot) => {
-      setListings(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
     });
 
-    // Users Subscription
-    const unsubUsers = onSnapshot(query(collection(db, 'users'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    return () => unsubscribe();
+  }, [isAdmin]);
 
-    // Reports Subscription
-    const unsubReports = onSnapshot(query(collection(db, 'reports'), orderBy('reportedAt', 'desc')), (snapshot) => {
-      setReports(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    // Stats Calculation
-    const calculateStats = async () => {
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const allUsers = await getDocs(collection(db, 'users'));
-      const activePosts = await getDocs(query(collection(db, 'posts'), where('status', '==', 'ACTIVE')));
-      const flaggedPosts = await getDocs(query(collection(db, 'posts'), where('status', '==', 'FLAGGED')));
-      const openReports = await getDocs(query(collection(db, 'reports'), where('status', '==', 'open')));
-
-      const weekUsers = allUsers.docs.filter(d => (d.data().createdAt?.toDate() || 0) > oneWeekAgo);
-      const weekPosts = activePosts.docs.filter(d => (d.data().createdAt?.toDate() || 0) > oneWeekAgo);
-
-      setStats({
-        totalUsers: allUsers.size,
-        activeListings: activePosts.size,
-        flaggedListings: flaggedPosts.size,
-        openReports: openReports.size,
-        newUsersWeek: weekUsers.length,
-        newListingsWeek: weekPosts.length
-      });
-    };
-    calculateStats();
-
-    return () => {
-      unsubListings();
-      unsubUsers();
-      unsubReports();
-    };
-  }, [isAdmin, filterFlagged]);
-
-  // 3. Actions
-  const handleRemoveListing = async (listingId: string) => {
-    if (!confirm('Are you sure you want to remove this listing?')) return;
-    await updateDoc(doc(db, 'posts', listingId), {
-      status: 'REMOVED',
-      removedBy: user?.uid,
-      removedAt: serverTimestamp()
-    });
-  };
-
-  const handleToggleBan = async (userId: string, currentBanned: boolean) => {
-    const action = currentBanned ? 're-enable' : 'disable';
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-    await updateDoc(doc(db, 'users', userId), {
-      isBanned: !currentBanned,
-      bannedBy: !currentBanned ? user?.uid : null,
-      bannedAt: !currentBanned ? serverTimestamp() : null
-    });
-  };
-
-  const handleUpdateReport = async (reportId: string, status: 'actioned' | 'dismissed') => {
-    await updateDoc(doc(db, 'reports', reportId), {
-      status,
-      actionedAt: serverTimestamp(),
-      actionedBy: user?.uid
-    });
-  };
-
-  if (loading) {
+  if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
-      </div>
-    );
-  }
-
-  if (isAdmin === false) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">403</h1>
-          <p className="text-slate-600 mb-8 font-medium">Access Denied: Administrative privileges required.</p>
-          <Link 
-            href="/" 
-            className="inline-block bg-slate-900 text-white px-8 py-3 rounded-full font-semibold hover:bg-slate-800 transition-colors shadow-lg"
-          >
-            Back to Home
-          </Link>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-rose-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Restricted Access</h1>
+          <p className="text-slate-500">This area is reserved for UniformHub moderators.</p>
+          <Link href="/" className="mt-6 inline-block text-indigo-600 font-bold hover:underline">Return Home</Link>
         </div>
       </div>
     );
   }
+
+  const handleDelete = async (id: string) => {
+     if (true) {
+        await deleteDoc(doc(db, 'posts', id));
+     }
+  };
+
+  const handleBan = async (uid: string) => {
+    if (true) {
+        await updateDoc(doc(db, 'users', uid), { status: 'BANNED' });
+        alert('User status updated');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-bold tracking-tight">Admin Dashboard</h1>
-            <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
-              Exit Dashboard
-            </Link>
-          </div>
-          
-          {/* Tabs Nav */}
-          <nav className="flex space-x-8 overflow-x-auto no-scrollbar">
-            {['listings', 'users', 'reports', 'stats'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as TabType)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize whitespace-nowrap transition-all duration-200 ${
-                  activeTab === tab 
-                    ? 'border-slate-900 text-slate-900 scale-105' 
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50">
+      <Navbar />
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <header className="mb-10 flex items-center justify-between">
+           <div className="flex items-center gap-4">
+              <div className="p-3 bg-slate-900 rounded-2xl shadow-xl">
+                 <Shield className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                 <h1 className="text-2xl font-black text-slate-900 tracking-tight italic">Moderator Ops</h1>
+                 <p className="text-slate-400 text-sm font-medium tracking-tight">Management console for UniformHub</p>
+              </div>
+           </div>
+           <div className="flex gap-4">
+              <div className="bg-white px-6 py-2 rounded-xl border border-slate-200 text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Reports</p>
+                 <p className="text-xl font-black text-slate-900">0</p>
+              </div>
+              <div className="bg-white px-6 py-2 rounded-xl border border-slate-200 text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Items</p>
+                 <p className="text-xl font-black text-slate-900">{posts.length}</p>
+              </div>
+           </div>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        
-        {/* Listings Tab */}
-        {activeTab === 'listings' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Marketplace Listings</h2>
-              <button 
-                onClick={() => setFilterFlagged(!filterFlagged)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border-2 ${
-                  filterFlagged 
-                    ? 'bg-red-50 border-red-200 text-red-600 shadow-sm' 
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                }`}
-              >
-                {filterFlagged ? 'Show All Listings' : 'Show Only FLAGGED'}
-              </button>
-            </div>
-            <AdminTable 
-              data={listings}
-              columns={[
-                {
-                  header: 'Item',
-                  render: (p) => (
-                    <div className="flex items-center gap-3">
-                      <div className="relative h-12 w-12 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200">
-                        {p.photoUrls?.[0] ? (
-                          <Image src={p.photoUrls[0]} alt={p.title} fill className="object-cover" />
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-[10px] text-slate-400">No Image</div>
-                        )}
-                      </div>
-                      <span className="font-semibold text-slate-900 truncate max-w-[150px]">{p.title}</span>
-                    </div>
-                  )
-                },
-                {
-                  header: 'Seller',
-                  render: (p) => (
-                    <div className="text-xs leading-tight">
-                      <div className="font-medium text-slate-900">{p.ownerName}</div>
-                      <div className="text-slate-400">{p.ownerEmail || 'No email'}</div>
-                    </div>
-                  )
-                },
-                { header: 'School', render: (p) => p.school || 'N/A' },
-                { header: 'Price', render: (p) => `$${p.price}` },
-                { header: 'Qty', render: (p) => p.quantity || 1 },
-                { 
-                  header: 'Status', 
-                  render: (p) => (
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
-                      p.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' :
-                      p.status === 'FLAGGED' ? 'bg-orange-100 text-orange-700' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>
-                      {p.status}
-                    </span>
-                  )
-                },
-                {
-                  header: 'Actions',
-                  render: (p) => (
-                    p.status !== 'REMOVED' ? (
-                      <button 
-                        onClick={() => handleRemoveListing(p.id)}
-                        className="text-red-600 hover:text-red-800 font-bold text-xs"
-                      >
-                        Remove
-                      </button>
-                    ) : (
-                      <span className="text-slate-300 text-xs italic">Removed</span>
-                    )
-                  )
-                }
-              ]}
-            />
-          </div>
-        )}
-
-        {/* Users Tab */}
-        {activeTab === 'users' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-2xl font-bold">App Users</h2>
-            <AdminTable 
-              data={users}
-              columns={[
-                {
-                   header: 'User',
-                   render: (u) => (
-                     <div className="flex items-center gap-3">
-                       <div className="h-10 w-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden relative">
-                         {u.photoURL ? <Image src={u.photoURL} alt="" fill className="object-cover" /> : <div className="bg-slate-300 h-full w-full" />}
-                       </div>
-                       <span className="font-semibold">{u.displayName || 'Anonymous'}</span>
-                     </div>
-                   )
-                },
-                { header: 'Email', render: (u) => u.email },
-                { header: 'Joined', render: (u) => u.createdAt?.toDate().toLocaleDateString() || 'N/A' },
-                { 
-                  header: 'Banned', 
-                  render: (u) => (
-                    u.isBanned ? (
-                      <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-black italic">BANNED</span>
-                    ) : (
-                      <span className="text-emerald-500 font-bold text-[10px]">ACTIVE</span>
-                    )
-                  )
-                },
-                {
-                  header: 'Actions',
-                  render: (u) => (
-                    <button 
-                      onClick={() => handleToggleBan(u.id, !!u.isBanned)}
-                      className={`text-xs font-black uppercase tracking-tight ${u.isBanned ? 'text-emerald-600' : 'text-red-600'}`}
-                    >
-                      {u.isBanned ? 'Re-enable' : 'Disable'}
-                    </button>
-                  )
-                }
-              ]}
-            />
-          </div>
-        )}
-
-        {/* Reports Tab */}
-        {activeTab === 'reports' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-2xl font-bold">Safety Reports</h2>
-            <AdminTable 
-              data={reports}
-              columns={[
-                { header: 'Reported At', render: (r) => r.reportedAt?.toDate().toLocaleString() || 'N/A' },
-                { header: 'Reporter', render: (r) => r.reporterEmail },
-                { 
-                  header: 'Post', 
-                  render: (r) => (
-                    <Link href={`/posts/${r.postId}`} className="text-blue-600 hover:underline font-medium">View Listing</Link>
-                  ) 
-                },
-                { header: 'Reason', render: (r) => r.reason },
-                { 
-                  header: 'Status', 
-                  render: (r) => (
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                      r.status === 'open' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {r.status || 'open'}
-                    </span>
-                  )
-                },
-                {
-                  header: 'Actions',
-                  render: (r) => (
-                    r.status === 'open' && (
-                      <div className="flex gap-4">
-                        <button onClick={() => handleUpdateReport(r.id, 'actioned')} className="text-emerald-600 text-xs font-bold">Mark Actioned</button>
-                        <button onClick={() => handleUpdateReport(r.id, 'dismissed')} className="text-slate-400 text-xs font-medium">Dismiss</button>
-                      </div>
-                    )
-                  )
-                }
-              ]}
-            />
-          </div>
-        )}
-
-        {/* Stats Tab */}
-        {activeTab === 'stats' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-2xl font-bold mb-8">Platform Statistics</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { label: 'Total Users', val: stats.totalUsers },
-                { label: 'Active Listings', val: stats.activeListings },
-                { label: 'Open Reports', val: stats.openReports },
-                { label: 'Flagged Listings', val: stats.flaggedListings, color: 'text-orange-600' },
-                { label: 'New Users (7d)', val: stats.newUsersWeek, color: 'text-emerald-600' },
-                { label: 'New Listings (7d)', val: stats.newListingsWeek, color: 'text-emerald-600' }
-              ].map((s, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center">
-                  <p className="text-slate-500 text-sm font-medium uppercase tracking-widest mb-2">{s.label}</p>
-                  <p className={`text-5xl font-black ${s.color || 'text-slate-900'}`}>{s.val}</p>
+        <div className="grid grid-cols-1 gap-6">
+           <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                 <h2 className="font-bold text-slate-900">Live Item Management</h2>
+                 <div className="relative">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                   <input 
+                     type="text" 
+                     placeholder="Search listings..." 
+                     className="bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-1.5 text-xs focus:ring-1 focus:ring-slate-900" 
+                   />
+                 </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                    <thead>
+                       <tr className="border-b border-slate-100">
+                          <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Item / Seller</th>
+                          <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">School</th>
+                          <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Added</th>
+                          <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                       {posts.map(post => (
+                         <tr key={post.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                               <div className="flex items-center gap-3">
+                                  <Link href={`/posts/${post.id}`} className="block transition-transform hover:scale-105 active:scale-95">
+                                     <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 relative flex items-center justify-center border border-slate-200">
+                                        {post.photoUrls?.[0] ? (
+                                          <Image 
+                                            src={post.photoUrls[0]} 
+                                            alt={post.title} 
+                                            fill 
+                                            className="object-cover"
+                                            referrerPolicy="no-referrer"
+                                          />
+                                        ) : (
+                                          <ImageIcon className="w-5 h-5 text-slate-300" />
+                                        )}
+                                     </div>
+                                  </Link>
+                                  <div>
+                                     <p className="text-sm font-bold text-slate-900 line-clamp-1">{post.title}</p>
+                                     <p className="text-[10px] text-slate-400 font-medium">{post.ownerName}</p>
+                                  </div>
+                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                               <span className="text-[10px] font-bold py-1 px-2 bg-indigo-50 text-indigo-700 rounded-md">
+                                  {post.school || 'Unspecified'}
+                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-xs font-medium text-slate-500">
+                               {post.createdAt?.toDate()?.toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4">
+                               <div className="flex justify-end gap-2">
+                                  <Link href={`/posts/${post.id}`} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                     <ExternalLink className="w-4 h-4" />
+                                  </Link>
+                                  <button onClick={() => handleDelete(post.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
+                                     <Trash2 className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => handleBan(post.ownerId)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
+                                     <Ban className="w-4 h-4" />
+                                  </button>
+                               </div>
+                            </td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+              {loading && (
+                <div className="flex items-center justify-center p-12">
+                   <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+              )}
+           </div>
+        </div>
       </main>
     </div>
   );

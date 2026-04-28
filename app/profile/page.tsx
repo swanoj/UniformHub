@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/components/FirebaseProvider';
 import { db, auth } from '@/lib/firebase';
-import { doc, updateDoc, collection, query, where, onSnapshot, deleteDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { Navbar } from '@/components/Navbar';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, User, MapPin, Tag, LogOut, Package, Trash2, CheckCircle, Loader2, Edit2, ShoppingBag, Plus, Star, X, Shield, Search } from 'lucide-react';
@@ -24,9 +24,6 @@ export default function ProfilePage() {
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
-  const [postToMarkSold, setPostToMarkSold] = useState<any | null>(null);
-  const [soldQty, setSoldQty] = useState(1);
-
 
   // Filtered lists
   const filteredSchools = AUSTRALIAN_SCHOOLS.filter(s => 
@@ -86,39 +83,6 @@ export default function ProfilePage() {
       console.error(error);
     }
   };
-
-  const handleConfirmSold = async () => {
-    if (!postToMarkSold || !user) return;
-    setUpdating(true);
-    try {
-      const postRef = doc(db, 'posts', postToMarkSold.id);
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(postRef);
-        if (!snapshot.exists()) {
-          throw new Error('Listing no longer exists');
-        }
-
-        const currentQty = Number(snapshot.data().quantity || 1);
-        const clampedSoldQty = Math.max(1, Math.min(soldQty, currentQty));
-        const remaining = currentQty - clampedSoldQty;
-
-        transaction.update(postRef, {
-          quantity: Math.max(0, remaining),
-          status: remaining <= 0 ? 'SOLD' : 'ACTIVE',
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      setPostToMarkSold(null);
-      setSoldQty(1);
-    } catch (error) {
-      console.error(error);
-      alert('Failed to update listing');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
 
   const handleDeletePost = async () => {
     if (!postToDelete) return;
@@ -266,6 +230,58 @@ export default function ProfilePage() {
 
               </div>
 
+               <div className="pt-8 border-t border-slate-100 space-y-4">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <Shield className="w-4 h-4 text-indigo-600" />
+                       <h3 className="font-bold text-slate-800 text-sm">Membership</h3>
+                    </div>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${profile?.isMember ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                       {profile?.isMember ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                 </div>
+                 {!profile?.isMember ? (
+                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+                     <p className="text-xs font-bold text-slate-700 mb-1">$5/year Membership</p>
+                     <p className="text-[10px] text-slate-400 mb-4">Unlimited listings for 12 months</p>
+                     <button 
+                       onClick={async () => {
+                         if (!user) return;
+                         if (true) {
+                           const expiry = new Date();
+                           expiry.setFullYear(expiry.getFullYear() + 1);
+                           await updateDoc(doc(db, 'users', user.uid), {
+                             isMember: true,
+                             membershipExpiry: expiry
+                           });
+                           alert('Payment successful! You are now a premium member.');
+                         }
+                       }}
+                       className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition"
+                     >
+                       Upgrade Now
+                     </button>
+                   </div>
+                 ) : (
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-slate-400 font-medium">Valid until: {profile?.membershipExpiry?.toDate()?.toLocaleDateString()}</p>
+                      <button 
+                        onClick={async () => {
+                          if (!user) return;
+                          if (true) {
+                            await updateDoc(doc(db, 'users', user.uid), {
+                              isMember: false,
+                              membershipExpiry: null
+                            });
+                          }
+                        }}
+                        className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
+                      >
+                        Cancel Membership
+                      </button>
+                    </div>
+                 )}
+              </div>
           </motion.div>
 
           <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 space-y-4">
@@ -330,19 +346,11 @@ export default function ProfilePage() {
                       <div className="mt-5 pt-4 border-t border-slate-50 flex gap-2">
                         {post.status === 'ACTIVE' ? (
                           <button
-                            onClick={() => {
-                              if (post.quantity > 1) {
-                                setPostToMarkSold(post);
-                                setSoldQty(1);
-                              } else {
-                                handleMarkStatus(post.id, 'SOLD');
-                              }
-                            }}
+                            onClick={() => handleMarkStatus(post.id, 'SOLD')}
                             className="flex-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5"
                           >
                             <CheckCircle className="w-3.5 h-3.5" /> Mark Sold
                           </button>
-
                         ) : (
                           <button
                             onClick={() => handleMarkStatus(post.id, 'ACTIVE')}
@@ -422,55 +430,6 @@ export default function ProfilePage() {
       </AnimatePresence>
 
       </main>
-      {/* Mark as Sold Modal */}
-      {postToMarkSold && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-8">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-8 h-8 text-emerald-600" />
-              </div>
-              
-              <h3 className="text-2xl font-bold text-center text-slate-900 mb-2">How many sold?</h3>
-              <p className="text-slate-500 text-center mb-8">
-                You have {postToMarkSold.quantity} available. How many did you sell just now?
-              </p>
-
-              <div className="flex justify-center gap-4 mb-8">
-                {[...Array(postToMarkSold.quantity)].map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setSoldQty(i + 1)}
-                    className={`w-14 h-14 rounded-2xl font-bold text-xl transition-all ${
-                      soldQty === i + 1 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' 
-                        : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setPostToMarkSold(null)}
-                  className="flex-1 py-4 text-slate-500 font-semibold hover:bg-slate-50 rounded-2xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmSold}
-                  disabled={updating}
-                  className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
-                >
-                  {updating ? 'Updating...' : 'Confirm'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

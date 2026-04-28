@@ -117,15 +117,9 @@ export function Navbar() {
       <div className="max-w-[1920px] mx-auto px-4">
         <div className="flex h-14 items-center gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <div className="relative w-10 h-10 group-hover:scale-105 transition-transform">
-              <Image 
-                src="/icon.png" 
-                alt="UniformHub" 
-                width={40} 
-                height={40} 
-                className="rounded-xl shadow-md border border-slate-100"
-              />
+          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+            <div className="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+              <span className="text-white font-black text-xl italic tracking-tighter">U</span>
             </div>
             <span className="hidden lg:block font-extrabold text-xl tracking-tight text-slate-900">UniformHub</span>
           </Link>

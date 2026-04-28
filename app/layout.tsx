@@ -19,15 +19,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'UniformHub | Secondhand Uniforms',
   description: 'The second-hand uniforms/clothes platform. Feed-first, pickup only.',
-  icons: {
-    icon: '/icon.png',
-    apple: '/icon.png',
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'UniformHub',
-    startupImage: '/splash.png',
   },
   formatDetection: {
     telephone: false,
