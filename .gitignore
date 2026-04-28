@@ -6,3 +6,5 @@ coverage/
 .env*
 !.env.example
 data/uniformhub-schools.csv
+data/
+Library/
