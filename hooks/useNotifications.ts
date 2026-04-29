@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { messaging, db } from '@/lib/firebase';
+import { getSupportedMessaging, db } from '@/lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useUser } from '@/components/FirebaseProvider';
@@ -9,12 +9,21 @@ export function useNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !messaging || !user) return;
-    const msg = messaging; // Capture to narrow type
+    if (typeof window === 'undefined' || !user) return;
 
-    const requestPermission = async () => {
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
+    const setup = async () => {
       try {
+        const msg = await getSupportedMessaging();
+        if (!msg || cancelled) {
+          console.warn('[Notifications] FCM not supported in this browser/context.');
+          return;
+        }
+
         const status = await Notification.requestPermission();
+        if (cancelled) return;
         setPermission(status);
 
         if (status === 'granted') {
@@ -24,41 +33,63 @@ export function useNotifications() {
             return;
           }
 
-          let swRegistration = null;
+          let swRegistration: ServiceWorkerRegistration | null = null;
           if ('serviceWorker' in navigator) {
-            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            try {
+              swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            } catch (swError) {
+              console.warn('[Notifications] Service worker registration failed:', swError);
+            }
           }
+          if (cancelled) return;
 
-          const token = await getToken(msg, { 
-            vapidKey: vapidKey,
-            serviceWorkerRegistration: swRegistration || undefined
-          });
-
-          if (token) {
-            console.log('FCM Token:', token);
-            await updateDoc(doc(db, 'users', user.uid), {
-              fcmTokens: arrayUnion(token)
+          try {
+            const token = await getToken(msg, {
+              vapidKey: vapidKey,
+              serviceWorkerRegistration: swRegistration || undefined,
             });
+
+            if (token && !cancelled) {
+              console.log('FCM Token:', token);
+              await updateDoc(doc(db, 'users', user.uid), {
+                fcmTokens: arrayUnion(token),
+              });
+            }
+          } catch (tokenError) {
+            console.warn('[Notifications] Could not retrieve FCM token:', tokenError);
           }
         }
-      } catch (error) {
-        console.error('An error occurred while retrieving token:', error);
+
+        try {
+          unsubscribe = onMessage(msg, (payload) => {
+            console.log('Message received. ', payload);
+            if (payload.notification) {
+              new Notification(payload.notification.title || 'New Message', {
+                body: payload.notification.body,
+                icon: '/favicon.ico',
+              });
+            }
+          });
+        } catch (onMessageError) {
+          console.warn('[Notifications] Could not register foreground message listener:', onMessageError);
+        }
+      } catch (err) {
+        console.warn('[Notifications] Setup failed:', err);
       }
     };
 
-    requestPermission();
+    setup();
 
-    const unsubscribe = onMessage(msg, (payload) => {
-      console.log('Message received. ', payload);
-      if (payload.notification) {
-         new Notification(payload.notification.title || 'New Message', {
-           body: payload.notification.body,
-           icon: '/favicon.ico'
-         });
+    return () => {
+      cancelled = true;
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch {
+          // noop
+        }
       }
-    });
-
-    return () => unsubscribe();
+    };
   }, [user]);
 
   return { permission };
