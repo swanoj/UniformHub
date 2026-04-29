@@ -9,7 +9,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, User, MapPin, Tag, LogOut, Package, Trash2, CheckCircle, Loader2, Edit2, ShoppingBag, Plus, Star, X, Shield, Search } from 'lucide-react';
 import Image from 'next/image';
 import { PostCard } from '@/components/PostCard';
-import { AUSTRALIAN_SCHOOLS, SPORTS_CLUBS } from '@/lib/constants';
+import { SPORTS_CLUBS } from '@/lib/constants';
+import { useSchools } from '@/hooks/useSchools';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   // Filtered lists
+  const { schools: AUSTRALIAN_SCHOOLS } = useSchools();
   const filteredSchools = AUSTRALIAN_SCHOOLS.filter(s => 
     s.toLowerCase().includes(schoolSearch.toLowerCase()) && !favSchools.includes(s)
   ).slice(0, 5);

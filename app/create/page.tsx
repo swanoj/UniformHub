@@ -9,9 +9,10 @@ import { useUser } from '@/components/FirebaseProvider';
 import { Navbar } from '@/components/Navbar';
 import { motion } from 'motion/react';
 import Link from 'next/link';
-import { Image as ImageIcon, Camera, Loader2, X, Plus, AlertCircle, ChevronLeft, LayoutGrid, Sparkles, Wand2, Package } from 'lucide-react';
+import { Image as ImageIcon, Camera, Loader2, X, Plus, AlertCircle, ChevronLeft, LayoutGrid, Sparkles, Wand2, Package, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import { GoogleGenAI, Type } from "@google/genai";
+import { useSchools } from '@/hooks/useSchools';
 
 import Image from 'next/image';
 
@@ -32,6 +33,7 @@ export default function CreatePostPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const { schools: AUSTRALIAN_SCHOOLS } = useSchools();
   const [form, setForm] = useState({
     title: searchParams.get('title') || '',
     description: '',
@@ -50,6 +52,13 @@ export default function CreatePostPage() {
   const handleAddField = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  const filteredSchools = AUSTRALIAN_SCHOOLS
+    .filter((s) =>
+      s.toLowerCase().includes(form.school.toLowerCase()) &&
+      s.toLowerCase() !== form.school.toLowerCase()
+    )
+    .slice(0, 5);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -488,13 +497,30 @@ export default function CreatePostPage() {
 
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">School / Suburb</label>
-                    <input
-                      name="school"
-                      value={form.school}
-                      onChange={handleAddField}
-                      placeholder="e.g. Melbourne Grammar or Richmond"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                    />
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        name="school"
+                        value={form.school}
+                        onChange={handleAddField}
+                        placeholder="e.g. Melbourne Grammar or Richmond"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                      />
+                      {form.school && (
+                        <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl mt-1 shadow-xl z-20 overflow-hidden">
+                          {filteredSchools.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, school: s }))}
+                              className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 font-medium"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
