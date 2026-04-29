@@ -44,6 +44,7 @@ export default function ChatPage() {
 
   const threads = React.useMemo(() => {
     return fetchedThreads.filter(t => {
+      if (t.archived) return false;
       const otherUserIds = t.participantIds?.filter((id: string) => id !== user?.uid) || [];
       return !otherUserIds.some((id: string) => blockedUserIds.includes(id));
     });
@@ -57,13 +58,12 @@ export default function ChatPage() {
     const unsubscribeThread = onSnapshot(threadRef, (snap) => {
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() } as any;
+        if (data.archived) {
+          router.push('/inbox');
+          return;
+        }
         setThread(data);
         
-        // Handle read receipt: If I am receiving a message from someone else
-        if (data.lastMessageSenderId !== user.uid && !data.lastMessageRead) {
-          updateDoc(threadRef, { lastMessageRead: true });
-        }
-
         if (data?.postId) {
           getDoc(doc(db, 'posts', data.postId)).then(pSnap => {
             if (pSnap.exists()) setPost({ id: pSnap.id, ...pSnap.data() });
@@ -107,8 +107,7 @@ export default function ChatPage() {
       await updateDoc(doc(db, 'threads', threadId as string), {
         lastMessageText: text,
         lastMessageAt: serverTimestamp(),
-        lastMessageSenderId: user.uid,
-        lastMessageRead: false
+        lastMessageSenderId: user.uid
       });
 
       // Send Push Notification

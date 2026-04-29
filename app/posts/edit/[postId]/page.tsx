@@ -13,7 +13,7 @@ import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package, Plus } from 'luci
 import { PostCard } from '@/components/PostCard';
 import Image from 'next/image';
 
-const CATEGORIES = ['School', 'Sports Equipment'];
+const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
 const ITEM_NAMES = ["Blazer","Summer dress","Pinafore","Winter skirt","Blouse","Tie","Jumper","Straw hat","Sport hat","Sport Visor","Scarf","Rain jacket","Sport jacket","Fleece","Sport track pants","Sport shorts","Sport skort","Sport polo","House polo","Bathers","Rash vest","Swim cap","School Bag","Sports bag","Library bag","Pencil case","Umbrella","School Shoes","Shorts - Summer","Shorts - Winter","Belt","Trousers","Calculator","Books","Camp / Venture / Outdoor Ed items","Netball dress","Bib","Basketball singlet","Basketball shorts","Hockey shirt","Hocket skirt","Hockey Shorts","Football (AFL) guernsey","Football (AFL) shorts","Soccer jersey/shirt","Soccer shorts","Indoor court shoes","Football boots","Soccer boots","Other"];
 const SIZES = ["4","6","8","10","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
@@ -149,7 +149,12 @@ export default function EditPostPage() {
       alert("Please have at least one photo.");
       return;
     }
-    if (/[\w.-]+@[\w.-]+\.\w+/.test(form.description) || /\+?\d{8,15}/.test(form.description)) {
+    if (
+      /[\w.-]+@[\w.-]+\.\w+/.test(form.title) ||
+      /\+?\d{8,15}/.test(form.title) ||
+      /[\w.-]+@[\w.-]+\.\w+/.test(form.description) ||
+      /\+?\d{8,15}/.test(form.description)
+    ) {
       alert("Please do not include personal contact details (email or phone numbers) in the description.");
       return;
     }

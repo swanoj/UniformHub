@@ -41,6 +41,7 @@ export default function InboxPage() {
 
   const threads = useMemo(() => {
     return fetchedThreads.filter(thread => {
+      if (thread.archived) return false;
       const otherUserIds = thread.participantIds.filter((id: string) => id !== user?.uid);
       return !otherUserIds.some((id: string) => blockedUserIds.includes(id));
     });
@@ -105,9 +106,6 @@ export default function InboxPage() {
                           <div className="flex justify-between items-center mb-0.5">
                             <div className="flex items-center gap-2">
                                <h3 className="font-bold text-slate-800 text-base">{otherName}</h3>
-                               {thread.lastMessageSenderId !== user?.uid && !thread.lastMessageRead && (
-                                  <span className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></span>
-                               )}
                             </div>
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                               {formatDistanceToNow(lastAt, { addSuffix: false }).replace('about ', '')}
@@ -115,12 +113,9 @@ export default function InboxPage() {
                           </div>
                           <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1.5">{thread.postTitle}</p>
                           <div className="flex justify-between items-center">
-                            <p className={`text-sm truncate font-medium ${thread.lastMessageSenderId !== user?.uid && !thread.lastMessageRead ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                            <p className="text-sm truncate font-medium text-slate-500">
                               {thread.lastMessageText || 'No messages yet...'}
                             </p>
-                            {thread.lastMessageSenderId === user?.uid && thread.lastMessageRead && (
-                               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Seen</span>
-                            )}
                           </div>
                         </div>
 

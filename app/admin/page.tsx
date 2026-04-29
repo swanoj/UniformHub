@@ -13,12 +13,13 @@ import {
   serverTimestamp, 
   where,
   getDoc,
-  getDocs
+  getDocs,
+  getCountFromServer
 } from 'firebase/firestore';
 import AdminTable from '@/components/AdminTable';
 import Link from 'next/link';
 
-type TabType = 'listings' | 'users' | 'reports' | 'stats';
+type TabType = 'listings' | 'users' | 'reports' | 'threads';
 
 export default function AdminPage() {
   const { user } = useUser();
@@ -30,14 +31,9 @@ export default function AdminPage() {
   const [listings, setListings] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({
-    totalUsers: 0,
-    activeListings: 0,
-    flaggedListings: 0,
-    openReports: 0,
-    newUsersWeek: 0,
-    newListingsWeek: 0
-  });
+  const [threads, setThreads] = useState<any[]>([]);
+  const [participantEmailMap, setParticipantEmailMap] = useState<Record<string, string>>({});
+  const [threadMessageCounts, setThreadMessageCounts] = useState<Record<string, number>>({});
 
   const [filterFlagged, setFilterFlagged] = useState(false);
 
@@ -88,36 +84,67 @@ export default function AdminPage() {
       setReports(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    // Stats Calculation
-    const calculateStats = async () => {
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const allUsers = await getDocs(collection(db, 'users'));
-      const activePosts = await getDocs(query(collection(db, 'posts'), where('status', '==', 'ACTIVE')));
-      const flaggedPosts = await getDocs(query(collection(db, 'posts'), where('status', '==', 'FLAGGED')));
-      const openReports = await getDocs(query(collection(db, 'reports'), where('status', '==', 'open')));
-
-      const weekUsers = allUsers.docs.filter(d => (d.data().createdAt?.toDate() || 0) > oneWeekAgo);
-      const weekPosts = activePosts.docs.filter(d => (d.data().createdAt?.toDate() || 0) > oneWeekAgo);
-
-      setStats({
-        totalUsers: allUsers.size,
-        activeListings: activePosts.size,
-        flaggedListings: flaggedPosts.size,
-        openReports: openReports.size,
-        newUsersWeek: weekUsers.length,
-        newListingsWeek: weekPosts.length
-      });
-    };
-    calculateStats();
+    // Threads Subscription
+    const unsubThreads = onSnapshot(query(collection(db, 'threads'), orderBy('lastMessageAt', 'desc')), (snapshot) => {
+      setThreads(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
 
     return () => {
       unsubListings();
       unsubUsers();
       unsubReports();
+      unsubThreads();
     };
   }, [isAdmin, filterFlagged]);
+
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'threads' || threads.length === 0) return;
+    let cancelled = false;
+
+    const hydrateThreadMetadata = async () => {
+      const allParticipantIds = Array.from(
+        new Set(
+          threads.flatMap((thread: any) =>
+            Array.isArray(thread.participantIds) ? thread.participantIds : [],
+          ),
+        ),
+      );
+
+      const emailPairs = await Promise.all(
+        allParticipantIds.map(async (uid) => {
+          try {
+            const userSnap = await getDoc(doc(db, 'users', uid));
+            if (!userSnap.exists()) return [uid, 'Unknown user'] as const;
+            const data = userSnap.data();
+            return [uid, data.email || data.displayName || uid] as const;
+          } catch {
+            return [uid, 'Unknown user'] as const;
+          }
+        }),
+      );
+
+      const countPairs = await Promise.all(
+        threads.map(async (thread: any) => {
+          try {
+            const countSnap = await getCountFromServer(collection(db, 'threads', thread.id, 'messages'));
+            return [thread.id, countSnap.data().count] as const;
+          } catch {
+            return [thread.id, 0] as const;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      setParticipantEmailMap(Object.fromEntries(emailPairs));
+      setThreadMessageCounts(Object.fromEntries(countPairs));
+    };
+
+    hydrateThreadMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, activeTab, threads]);
 
   // 3. Actions
   const handleRemoveListing = async (listingId: string) => {
@@ -144,6 +171,15 @@ export default function AdminPage() {
       status,
       actionedAt: serverTimestamp(),
       actionedBy: user?.uid
+    });
+  };
+
+  const handleArchiveThread = async (threadId: string) => {
+    if (!confirm('Archive this thread? It will be hidden from users.')) return;
+    await updateDoc(doc(db, 'threads', threadId), {
+      archived: true,
+      archivedAt: serverTimestamp(),
+      archivedBy: user?.uid
     });
   };
 
@@ -186,7 +222,7 @@ export default function AdminPage() {
           
           {/* Tabs Nav */}
           <nav className="flex space-x-8 overflow-x-auto no-scrollbar">
-            {['listings', 'users', 'reports', 'stats'].map((tab) => (
+            {['listings', 'users', 'reports', 'threads'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab as TabType)}
@@ -371,25 +407,57 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Stats Tab */}
-        {activeTab === 'stats' && (
+        {/* Threads Tab */}
+        {activeTab === 'threads' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-2xl font-bold mb-8">Platform Statistics</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { label: 'Total Users', val: stats.totalUsers },
-                { label: 'Active Listings', val: stats.activeListings },
-                { label: 'Open Reports', val: stats.openReports },
-                { label: 'Flagged Listings', val: stats.flaggedListings, color: 'text-orange-600' },
-                { label: 'New Users (7d)', val: stats.newUsersWeek, color: 'text-emerald-600' },
-                { label: 'New Listings (7d)', val: stats.newListingsWeek, color: 'text-emerald-600' }
-              ].map((s, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center">
-                  <p className="text-slate-500 text-sm font-medium uppercase tracking-widest mb-2">{s.label}</p>
-                  <p className={`text-5xl font-black ${s.color || 'text-slate-900'}`}>{s.val}</p>
-                </div>
-              ))}
-            </div>
+            <h2 className="text-2xl font-bold mb-6">Message Threads</h2>
+            <AdminTable
+              data={threads}
+              columns={[
+                {
+                  header: 'Participants',
+                  render: (t) => {
+                    const ids = Array.isArray(t.participantIds) ? t.participantIds : [];
+                    if (ids.length === 0) return 'No participants';
+                    return ids
+                      .map((uid: string) => participantEmailMap[uid] || uid)
+                      .join(', ');
+                  }
+                },
+                { header: 'Last Message', render: (t) => t.lastMessageText || '—' },
+                {
+                  header: 'Updated',
+                  render: (t) => t.lastMessageAt?.toDate?.().toLocaleString?.() || 'N/A'
+                },
+                {
+                  header: 'Messages',
+                  render: (t) => threadMessageCounts[t.id] ?? 0
+                },
+                {
+                  header: 'View',
+                  render: (t) => (
+                    <Link href={`/chat/${t.id}`} className="text-blue-600 hover:underline font-medium">
+                      Open
+                    </Link>
+                  )
+                },
+                {
+                  header: 'Actions',
+                  render: (t) => (
+                    t.archived ? (
+                      <span className="text-slate-400 text-xs italic">Archived</span>
+                    ) : (
+                      <button
+                        onClick={() => handleArchiveThread(t.id)}
+                        className="text-red-600 hover:text-red-800 font-bold text-xs"
+                      >
+                        Archive
+                      </button>
+                    )
+                  )
+                }
+              ]}
+            />
           </div>
         )}
 

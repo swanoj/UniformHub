@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/components/FirebaseProvider';
 import { db, auth } from '@/lib/firebase';
-import { doc, updateDoc, collection, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, onSnapshot, deleteDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Navbar } from '@/components/Navbar';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, User, MapPin, Tag, LogOut, Package, Trash2, CheckCircle, Loader2, Edit2, ShoppingBag, Plus, Star, X, Shield, Search } from 'lucide-react';
 import Image from 'next/image';
 import { PostCard } from '@/components/PostCard';
-import { SPORTS_CLUBS } from '@/lib/constants';
+import { SPORT_TYPES } from '@/lib/constants';
 import { useSchools } from '@/hooks/useSchools';
 import Link from 'next/link';
 
@@ -17,23 +17,22 @@ export default function ProfilePage() {
   const { user, profile } = useUser();
   const [suburb, setSuburb] = useState(profile?.suburb || '');
   const [school, setSchool] = useState(profile?.school || '');
+  const [sportType, setSportType] = useState(profile?.sportType || '');
+  const [clubName, setClubName] = useState(profile?.clubName || '');
   const [favSchools, setFavSchools] = useState<string[]>(profile?.favSchools || []);
-  const [favClubs, setFavClubs] = useState<string[]>(profile?.favClubs || []);
   const [schoolSearch, setSchoolSearch] = useState('');
-  const [clubSearch, setClubSearch] = useState('');
   const [updating, setUpdating] = useState(false);
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [postToMarkSold, setPostToMarkSold] = useState<any | null>(null);
+  const [soldQty, setSoldQty] = useState(1);
+
 
   // Filtered lists
   const { schools: AUSTRALIAN_SCHOOLS } = useSchools();
   const filteredSchools = AUSTRALIAN_SCHOOLS.filter(s => 
     s.toLowerCase().includes(schoolSearch.toLowerCase()) && !favSchools.includes(s)
-  ).slice(0, 5);
-
-  const filteredClubs = SPORTS_CLUBS.filter(c => 
-    c.toLowerCase().includes(clubSearch.toLowerCase()) && !favClubs.includes(c)
   ).slice(0, 5);
 
   useEffect(() => {
@@ -58,8 +57,9 @@ export default function ProfilePage() {
       await updateDoc(doc(db, 'users', user.uid), {
         suburb,
         school,
+        sportType,
+        clubName,
         favSchools,
-        favClubs,
         updatedAt: new Date()
       });
       alert('Profile updated!');
@@ -74,10 +74,6 @@ export default function ProfilePage() {
     setFavSchools(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   };
 
-  const toggleFavClub = (c: string) => {
-    setFavClubs(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
-  };
-
   const handleMarkStatus = async (postId: string, status: string) => {
     try {
       await updateDoc(doc(db, 'posts', postId), { status, updatedAt: new Date() });
@@ -85,6 +81,43 @@ export default function ProfilePage() {
       console.error(error);
     }
   };
+
+  const handleConfirmSold = async () => {
+    if (!postToMarkSold || !user) return;
+    setUpdating(true);
+    try {
+      const postRef = doc(db, 'posts', postToMarkSold.id);
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(postRef);
+        if (!snapshot.exists()) {
+          throw new Error('Listing no longer exists');
+        }
+
+        const currentQty = Number(snapshot.data().quantity || 1);
+        const clampedSoldQty = Math.max(1, Math.min(soldQty, currentQty));
+        const remaining = currentQty - clampedSoldQty;
+
+        if (remaining <= 0) {
+          transaction.delete(postRef);
+        } else {
+          transaction.update(postRef, {
+            quantity: Math.max(0, remaining),
+            status: 'ACTIVE',
+            updatedAt: serverTimestamp(),
+          });
+        }
+      });
+
+      setPostToMarkSold(null);
+      setSoldQty(1);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to update listing');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
 
   const handleDeletePost = async () => {
     if (!postToDelete) return;
@@ -185,37 +218,31 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Clubs Favourites */}
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Favourite Clubs/Sports</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {favClubs.map(c => (
-                      <span key={c} className="px-2 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold rounded-md flex items-center gap-1">
-                        {c} <X className="w-3 h-3 cursor-pointer" onClick={() => toggleFavClub(c)} />
-                      </span>
-                    ))}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Sport Type</label>
+                    <select
+                      value={sportType}
+                      onChange={(e) => setSportType(e.target.value)}
+                      className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="">Select sport type</option>
+                      {Object.keys(SPORT_TYPES).map((sport) => (
+                        <option key={sport} value={sport}>
+                          {sport}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Club Name</label>
                     <input
                       type="text"
-                      placeholder="Add sport/club..."
-                      value={clubSearch}
-                      onChange={(e) => setClubSearch(e.target.value)}
-                      className="w-full bg-slate-50 border-none rounded-lg pl-9 pr-4 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
+                      value={clubName}
+                      onChange={(e) => setClubName(e.target.value)}
+                      placeholder={sportType ? `${sportType} club name` : 'Enter club name'}
+                      className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
                     />
-                    {clubSearch && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl mt-1 shadow-xl z-20 overflow-hidden">
-                        {filteredClubs.map(c => (
-                          <button key={c} onClick={() => {toggleFavClub(c); setClubSearch('');}} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 font-medium">
-                            {c}
-                          </button>
-                        ))}
-                        <button onClick={() => {toggleFavClub(clubSearch); setClubSearch('');}} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 font-bold text-rose-600 border-t border-slate-100">
-                          Add &quot;{clubSearch}&quot; (Manual Entry)
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -232,58 +259,6 @@ export default function ProfilePage() {
 
               </div>
 
-               <div className="pt-8 border-t border-slate-100 space-y-4">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <Shield className="w-4 h-4 text-indigo-600" />
-                       <h3 className="font-bold text-slate-800 text-sm">Membership</h3>
-                    </div>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${profile?.isMember ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                       {profile?.isMember ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                 </div>
-                 {!profile?.isMember ? (
-                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
-                     <p className="text-xs font-bold text-slate-700 mb-1">$5/year Membership</p>
-                     <p className="text-[10px] text-slate-400 mb-4">Unlimited listings for 12 months</p>
-                     <button 
-                       onClick={async () => {
-                         if (!user) return;
-                         if (true) {
-                           const expiry = new Date();
-                           expiry.setFullYear(expiry.getFullYear() + 1);
-                           await updateDoc(doc(db, 'users', user.uid), {
-                             isMember: true,
-                             membershipExpiry: expiry
-                           });
-                           alert('Payment successful! You are now a premium member.');
-                         }
-                       }}
-                       className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition"
-                     >
-                       Upgrade Now
-                     </button>
-                   </div>
-                 ) : (
-                    <div className="space-y-3">
-                      <p className="text-[10px] text-slate-400 font-medium">Valid until: {profile?.membershipExpiry?.toDate()?.toLocaleDateString()}</p>
-                      <button 
-                        onClick={async () => {
-                          if (!user) return;
-                          if (true) {
-                            await updateDoc(doc(db, 'users', user.uid), {
-                              isMember: false,
-                              membershipExpiry: null
-                            });
-                          }
-                        }}
-                        className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
-                      >
-                        Cancel Membership
-                      </button>
-                    </div>
-                 )}
-              </div>
           </motion.div>
 
           <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 space-y-4">
@@ -348,11 +323,19 @@ export default function ProfilePage() {
                       <div className="mt-5 pt-4 border-t border-slate-50 flex gap-2">
                         {post.status === 'ACTIVE' ? (
                           <button
-                            onClick={() => handleMarkStatus(post.id, 'SOLD')}
+                            onClick={() => {
+                              if (post.quantity > 1) {
+                                setPostToMarkSold(post);
+                                setSoldQty(1);
+                              } else {
+                                handleMarkStatus(post.id, 'SOLD');
+                              }
+                            }}
                             className="flex-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5"
                           >
                             <CheckCircle className="w-3.5 h-3.5" /> Mark Sold
                           </button>
+
                         ) : (
                           <button
                             onClick={() => handleMarkStatus(post.id, 'ACTIVE')}
@@ -432,6 +415,55 @@ export default function ProfilePage() {
       </AnimatePresence>
 
       </main>
+      {/* Mark as Sold Modal */}
+      {postToMarkSold && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-8">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-8 h-8 text-emerald-600" />
+              </div>
+              
+              <h3 className="text-2xl font-bold text-center text-slate-900 mb-2">How many sold?</h3>
+              <p className="text-slate-500 text-center mb-8">
+                You have {postToMarkSold.quantity} available. How many did you sell just now?
+              </p>
+
+              <div className="flex justify-center gap-4 mb-8">
+                {[...Array(postToMarkSold.quantity)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setSoldQty(i + 1)}
+                    className={`w-14 h-14 rounded-2xl font-bold text-xl transition-all ${
+                      soldQty === i + 1 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' 
+                        : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPostToMarkSold(null)}
+                  className="flex-1 py-4 text-slate-500 font-semibold hover:bg-slate-50 rounded-2xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmSold}
+                  disabled={updating}
+                  className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
+                >
+                  {updating ? 'Updating...' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

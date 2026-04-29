@@ -26,9 +26,9 @@
   VAPID key is configured and client hook is hardened, but real delivery has not been confirmed with a production token + send pipeline.  
   Next step: run a full push test matrix (foreground/background, Android emulator + real device).
 
-- **`mail` collection has no explicit Firestore rule**  
-  Current behavior relies on default-deny and server-side writes only.  
-  Next step: add explicit rule documentation and rule entries if any client write path is introduced.
+- **Trigger Email extension SMTP still needs production credentials confirmation**  
+  Firestore rules now explicitly block client access to `/mail`, and extension writes bypass via admin SDK.  
+  Next step: confirm final SMTP provider credentials/domain sender and run production-send validation.
 
 - **`isValidPost` rule allows `qty` from 0-3**  
   Next step: confirm with client whether `qty: 0` is intended business logic.
@@ -39,6 +39,10 @@
 - **Empty `(default)` Firestore database still exists**  
   Active app DB is named `ai-studio-763f001b-7206-4556-b5c7-087611c74887`.  
   Next step: audit and decommission the empty default DB when safe.
+
+- **Cron scheduler depends on hosting target**  
+  `vercel.json` defines a daily cron hit to `/api/cron/cleanup` at 02:00 UTC.  
+  Next step: if not deploying on Vercel, configure an alternative scheduler (Cloud Scheduler, GitHub Actions, or equivalent) to call this endpoint daily.
 
 ## 3) Code-level technical debt
 
@@ -64,7 +68,29 @@
 
 Next step for this section: convert each to scoped backlog epics with acceptance criteria and estimates.
 
-## 5) Documentation gaps
+## 5) Deferred — Phase 2 / out of scope
+
+- **Native app wrapper (Capacitor) is deferred**  
+  Pending hosting decision (Vercel vs Firebase Hosting) and Sascha's Apple Developer + Google Play Console setup responsibilities from Email 4 §8.
+
+- **App Store + Play Store submission is deferred**  
+  Blocked until native wrapper strategy, platform accounts, and production deploy are finalized.
+
+- **Production icons + splash screens are deferred**  
+  Next step: generate final assets via the R3F + Valtio generator workflow (`notion-76`) once branding lock is complete.
+
+- **Production hosting deployment is deferred**  
+  Next.js runtime must be deployed before any native wrapper is functional; recommended path is Vercel for operational simplicity.
+
+- **Apple Guideline 4.2 risk if wrapped as pure WebView**  
+  Mitigation plan for Phase 2: add native capabilities (`@capacitor/push-notifications`, `@capacitor/camera`, native share) to reduce rejection risk.
+
+## 6) Remaining dependencies (Sascha tasks per Email 4 §8)
+
+- Apple Developer account ($149/year)
+- Google Play Console account ($25 one-off)
+
+## 7) Documentation gaps
 
 - `ARCHITECTURE.md` not authored
 - `DEPLOYMENT.md` not authored

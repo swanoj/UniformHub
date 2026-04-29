@@ -35,18 +35,14 @@ export const AUSTRALIAN_SCHOOLS = [
   "Xavier College"
 ];
 
-export const SPORTS_CLUBS = [
-  "AFL",
-  "Athletics",
-  "Basketball",
-  "Cricket",
-  "Football (Soccer)",
-  "Gymnastics",
-  "Hockey",
-  "Netball",
-  "Rugby League",
-  "Rugby Union",
-  "Swimming",
-  "Tennis",
-  "Volleyball"
-];
+export const SPORT_TYPES: Record<string, string[]> = {
+  AFL: [],
+  Netball: [],
+  Basketball: [],
+  Hockey: [],
+  Soccer: [],
+  Floorball: [],
+  Cricket: [],
+  Rugby: [],
+  Other: [],
+};

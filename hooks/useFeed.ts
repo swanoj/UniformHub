@@ -58,7 +58,7 @@ export function useFeed(filters: FeedFilters, searchQuery: string) {
     }, 50);
     return () => clearTimeout(to);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.category, filters.type, filters.condition, filters.size, filters.school, filters.suburb, filters.sortBy, searchQuery]); 
+  }, [filters.category, filters.type, filters.condition, filters.size, filters.school, filters.suburb, filters.sportType, filters.secondhandOnly, filters.sortBy, searchQuery]); 
 
   return { posts, loading, hasMore, fetchingMore, fetchPosts, error };
 }

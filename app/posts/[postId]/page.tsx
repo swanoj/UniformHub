@@ -24,6 +24,19 @@ export default function PostDetailPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [optimisticFavorited, setOptimisticFavorited] = useState<boolean | null>(null);
   const [isFavoriting, setIsFavoriting] = useState(false);
+  const [purchaseQty, setPurchaseQty] = useState(1);
+  const images: string[] =
+    Array.isArray(post?.photoUrls) && post.photoUrls.length > 0
+      ? post.photoUrls
+      : ['/icon.png'];
+  const isExpired = (() => {
+    if (!post?.expiresAt) return false;
+    const expiresAt =
+      typeof post.expiresAt?.toDate === 'function'
+        ? post.expiresAt.toDate()
+        : new Date(post.expiresAt);
+    return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < new Date().getTime();
+  })();
 
   const isFavorited = optimisticFavorited !== null 
     ? optimisticFavorited 
@@ -121,47 +134,6 @@ export default function PostDetailPage() {
     }
   };
 
-  const handleBuyNow = async () => {
-    if (!user || !post) return;
-    if (post.status === 'SOLD') {
-      alert("This item is already sold.");
-      return;
-    }
-    
-    const qtyToBuy = parseInt(window.prompt('How many items would you like to purchase? (Max: ' + (post.quantity || 1) + ')', '1') || '0', 10);
-    if (!qtyToBuy || isNaN(qtyToBuy) || qtyToBuy <= 0 || qtyToBuy > (post.quantity || 1)) {
-        alert('Invalid quantity.');
-        return;
-    }
-    
-    
-    
-    setBuying(true);
-    try {
-          const remaining = (post.quantity || 1) - qtyToBuy;
-      if (remaining <= 0) {
-        await updateDoc(doc(db, 'posts', post.id), {
-          status: 'SOLD',
-          quantity: 0
-        });
-      } else {
-        await updateDoc(doc(db, 'posts', post.id), {
-          quantity: remaining
-        });
-      }
-      alert('Transaction Successful! The item is now marked as SOLD.');
-      router.push('/');
-    } catch (error) {
-      console.error("Error during purchase", error);
-    } finally {
-      setBuying(false);
-    }
-  };
-
-  const images = post?.photoUrls?.length > 0 ? post.photoUrls : [`https://picsum.photos/seed/${postId}/1200/1200`];
-
-  const isExpired = post?.createdAt?.toDate && (new Date().getTime() - post.createdAt.toDate().getTime() > 1000 * 60 * 60 * 24 * 56);
-
   const handleMessageSeller = async () => {
     if (!user || !post) return;
     setCreatingChat(true);
@@ -200,18 +172,51 @@ export default function PostDetailPage() {
 
   const handleReport = async () => {
     if (!user || !post) return;
+    
+    const reason = window.prompt('Please enter the reason for reporting this listing:', 'Inappropriate content/Spam');
+    if (!reason || reason.trim() === '') return;
+
     try {
-      await addDoc(collection(db, 'reports'), {
+      const reportData = {
         reporterId: user.uid,
+        reporterEmail: user.email || 'anonymous',
+        reporterName: profile?.displayName || user.displayName || 'Anonymous',
         postId: post.id,
-        reason: 'Inappropriate content/Spam',
-        status: 'NEW',
-        createdAt: serverTimestamp(),
+        postTitle: post.title,
+        postOwnerId: post.ownerId,
+        postOwnerName: post.ownerName,
+        postOwnerEmail: post.ownerEmail || 'No email',
+        reason: reason,
+        status: 'open',
+        reportedAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'reports'), reportData);
+
+      await addDoc(collection(db, 'mail'), {
+        to: ['sascha.crawford@hotmail.com'],
+        message: {
+          subject: `[UniformHub Report] ${post.title}`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #e11d48;">New listing report</h2>
+              <p><strong>Listing:</strong> ${post.title}</p>
+              <p><strong>Seller:</strong> ${post.ownerName} (${post.ownerEmail || 'No email'})</p>
+              <hr />
+              <p><strong>Reported by:</strong> ${profile?.displayName || user.displayName || 'Anonymous'} (${user.email || 'No email'})</p>
+              <p><strong>Reason:</strong> ${reason}</p>
+              <p><strong>Reported at:</strong> ${new Date().toLocaleString()}</p>
+              <br />
+              <a href="https://uniformhub-prod.web.app/admin?tab=reports" style="display: inline-block; padding: 10px 20px; background-color: #0f172a; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;">Open Admin Reports Tab</a>
+            </div>
+          `
+        }
       });
-      await fetch('/api/report', { method: 'POST', body: JSON.stringify({ postId: post.id, reporterId: user.uid, postUrl: window.location.href }) });
-      alert('Report submitted. Thank you for keeping our community safe.');
+
+      alert('Report submitted. Our team will review it.');
     } catch (error) {
       console.error("Error reporting post", error);
+      alert('Failed to submit report. Please try again later.');
     }
   };
 
@@ -244,23 +249,19 @@ export default function PostDetailPage() {
       <Navbar />
 
       <main className="flex-1 flex flex-col md:flex-row h-full overflow-hidden w-full">
-        {/* Left Side: Massive Image Viewport - Identical to FB */}
         <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden group">
-           {/* Navigation breadcrumbs overlap */}
            <div className="absolute top-4 left-4 z-20 flex gap-2">
              <button onClick={() => router.back()} className="w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors">
                <ChevronLeft className="w-6 h-6" />
              </button>
            </div>
 
-           {/* Zoom Button */}
            <div className="absolute top-4 right-4 z-20">
              <button onClick={() => setIsFullscreen(true)} className="w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors" title="Zoom In">
                <ZoomIn className="w-5 h-5" />
              </button>
            </div>
 
-           {/* Carousel Arrows */}
            {images.length > 1 && (
              <>
                <button 
@@ -292,7 +293,6 @@ export default function PostDetailPage() {
               sizes="(max-width: 768px) 100vw, 33vw" />
            </motion.div>
 
-           {/* Thumbnail Rail - Only if multple images */}
            {images.length > 1 && (
              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-black/20 backdrop-blur-md rounded-xl overflow-x-auto max-w-[90%] pointer-events-auto">
                {images.map((url: string, i: number) => (
@@ -308,7 +308,6 @@ export default function PostDetailPage() {
            )}
         </div>
 
-        {/* Right Side: Detail Column - Identical to FB Sidebar */}
         <div className="w-full md:w-90 bg-white border-l border-slate-200 overflow-y-auto flex flex-col shrink-0">
            <div className="p-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-900 line-clamp-1">Listing Details</h2>
@@ -332,7 +331,6 @@ export default function PostDetailPage() {
            </div>
 
            <div className="p-4 space-y-6">
-              {/* Core Info */}
               <div className="space-y-4">
                  <h1 className="text-2xl font-bold text-slate-900 leading-tight">
                    {post.title}
@@ -368,12 +366,7 @@ export default function PostDetailPage() {
                    </p>
                  </div>
 
-                 {/* Listing Attributes 2x2 Grid */}
                  <div className="grid grid-cols-2 gap-y-4 gap-x-8 pt-4 border-t border-slate-100">
-                    <div>
-                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">School / Location</p>
-                       <p className="text-sm font-semibold text-slate-900">{post.school || post.suburb || 'N/A'}</p>
-                    </div>
                     <div>
                        <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Size</p>
                        <p className="text-sm font-semibold text-slate-900">{post.size ? post.size + (post.sizeCategory ? ' (' + post.sizeCategory + ')' : '') : 'N/A'}</p>
@@ -384,6 +377,10 @@ export default function PostDetailPage() {
                          <div className={'w-2 h-2 rounded-full ' + (post.condition?.includes('New') ? 'bg-emerald-500' : post.condition?.includes('Excellent') ? 'bg-teal-500' : 'bg-slate-400')}></div>
                          <p className="text-sm font-semibold text-slate-900">{post.condition || 'N/A'}</p>
                        </div>
+                    </div>
+                    <div>
+                       <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Location</p>
+                       <p className="text-sm font-semibold text-slate-900">{post.school || post.suburb || 'N/A'}</p>
                     </div>
                     <div>
                        <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Category</p>
@@ -414,37 +411,30 @@ export default function PostDetailPage() {
                  )}
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col gap-3">
                 {user?.uid !== post.ownerId && post.status !== 'SOLD' && !isExpired ? (
                    <>
-                    {post.type === 'WTB' ? (
-                      <button
-                        onClick={() => router.push(`/create?sourcePostId=${post.id}&title=${encodeURIComponent(post.title)}&school=${encodeURIComponent(post.school || '')}`)}
-                        className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-                      >
-                        <Zap className="w-5 h-5 fill-white" />
-                        I Have This!
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleBuyNow}
-                        disabled={buying}
-                        className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-                      >
-                        {buying ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
-                        Buy Now
-                      </button>
-                    )}
-
-                    <button
-                      onClick={handleMessageSeller}
-                      disabled={creatingChat}
-                      className="w-full bg-slate-100 text-slate-800 py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-slate-200 transition-all border border-slate-200 disabled:opacity-50"
-                    >
-                      {creatingChat ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
-                      {post.type === 'WTB' ? 'Contact Buyer' : 'Message Seller'}
-                    </button>
+                     {post.type === 'WTB' ? (
+                       <button
+                         onClick={() => router.push(`/create?sourcePostId=${post.id}&title=${encodeURIComponent(post.title)}&school=${encodeURIComponent(post.school || '')}`)}
+                         className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                       >
+                         <Zap className="w-5 h-5 fill-white" />
+                         I Have This!
+                       </button>
+                     ) : (
+                       <button
+                         onClick={handleMessageSeller}
+                         disabled={creatingChat}
+                         className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                       >
+                         {creatingChat ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
+                         Message Seller
+                       </button>
+                     )}
+                     <p className="text-xs text-slate-600 font-medium">
+                       Keep all communication within the app. Sharing personal contact details may breach our T&amp;Cs.
+                     </p>
                    </>
                 ) : user?.uid === post.ownerId ? (
                   <div className="flex gap-2">
@@ -457,7 +447,8 @@ export default function PostDetailPage() {
                   </div>
                 ) : null}
                 
-                <p className="text-xs text-center text-slate-500 font-medium mt-2">All items must be collected within 5 days of purchase.</p>
+                <p className="text-xs text-center text-slate-500 font-medium mt-2">All transactions are arranged directly between buyer and seller.</p>
+
 
                 {post.status === 'SOLD' && (
                    <div className="bg-slate-100 p-6 rounded-2xl border border-slate-200 text-center">
@@ -483,7 +474,6 @@ export default function PostDetailPage() {
 
               <div className="h-[1px] bg-slate-100"></div>
 
-              {/* Description */}
               <div className="space-y-3">
                  <h3 className="text-lg font-bold text-slate-900">Additional Comments</h3>
                  <p className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-wrap">
@@ -498,7 +488,6 @@ export default function PostDetailPage() {
 
               <div className="h-[1px] bg-slate-100"></div>
 
-              {/* Seller Information */}
               <div className="space-y-4">
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-900">Seller Information</h3>
@@ -524,7 +513,6 @@ export default function PostDetailPage() {
                  </div>
               </div>
 
-              {/* Map/Location Section */}
               <div className="space-y-4">
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-900">Location</h3>
@@ -541,14 +529,16 @@ export default function PostDetailPage() {
                  </div>
               </div>
 
-              {/* Safety & Moderation Area */}
-              <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 space-y-3">
+               <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 space-y-3">
                  <div className="flex items-center gap-2 text-rose-700">
-                   <Info className="w-5 h-5" />
-                   <p className="font-black text-xs uppercase tracking-widest">Public Safety Notice</p>
+                   <ShieldAlert className="w-5 h-5" />
+                   <p className="font-black text-xs uppercase tracking-widest">Safety Warning</p>
                  </div>
-                 <p className="text-rose-800 text-[11px] font-medium leading-relaxed">
-                   Meet in public places. Do not provide home addresses. This is a local swap platform — verify the item in person before completing the exchange.
+                 <p className="text-rose-800 text-xs font-bold leading-relaxed">
+                   Meet in well-lit public places and inspect quality before payment.
+                 </p>
+                 <p className="text-rose-600 text-[10px] font-medium leading-relaxed">
+                   Do not provide home addresses. Verify the item in person before completing the exchange.
                  </p>
                  <div className="flex gap-4 pt-1 border-t border-rose-200/50">
                     <button onClick={handleReport} className="text-rose-600 text-[10px] font-black uppercase tracking-widest hover:underline">Report Listing</button>
@@ -559,7 +549,6 @@ export default function PostDetailPage() {
         </div>
       </main>
 
-      {/* Fullscreen Zoom Modal */}
       {isFullscreen && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center">
           <div className="absolute top-6 right-6 z-50">

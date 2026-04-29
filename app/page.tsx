@@ -33,7 +33,7 @@ import {
   Database
 } from 'lucide-react';
 
-const CATEGORIES = ['School', 'Sports Equipment'];
+const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 
@@ -128,6 +128,8 @@ export default function FeedPage() {
   const [selectedCondition, setSelectedCondition] = useState('All');
   const [selectedSize, setSelectedSize] = useState('All');
   const [selectedSchool, setSelectedSchool] = useState('All');
+  const [selectedSportType, setSelectedSportType] = useState('All');
+  const [secondhandOnly, setSecondhandOnly] = useState(false);
   const [selectedSortBy, setSelectedSortBy] = useState('Newest');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -137,8 +139,10 @@ export default function FeedPage() {
     condition: selectedCondition,
     size: selectedSize,
     school: selectedSchool,
+    sportType: selectedSportType,
+    secondhandOnly,
     sortBy: selectedSortBy
-  }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSchool, selectedSortBy]);
+  }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSchool, selectedSportType, secondhandOnly, selectedSortBy]);
 
   const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, searchQuery);
 
@@ -177,7 +181,7 @@ export default function FeedPage() {
              </div>
              <div className="space-y-1">
                 <button 
-                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSearchQuery('');}}
+                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSearchQuery('');}}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     selectedCategory === 'All' && selectedType === 'All' && selectedCondition === 'All' ? 'bg-[#F0F2F5]' : 'hover:bg-slate-50'
                   }`}
@@ -254,6 +258,26 @@ export default function FeedPage() {
                    />
                 </div>
 
+                <div className="space-y-1.5">
+                   <label className="text-sm font-bold text-slate-700">Sport Type</label>
+                   <select
+                     value={selectedSportType}
+                     onChange={(e) => setSelectedSportType(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
+                   >
+                     <option value="All">Any Sport</option>
+                     <option value="AFL">AFL</option>
+                     <option value="Netball">Netball</option>
+                     <option value="Basketball">Basketball</option>
+                     <option value="Hockey">Hockey</option>
+                     <option value="Soccer">Soccer</option>
+                     <option value="Floorball">Floorball</option>
+                     <option value="Cricket">Cricket</option>
+                     <option value="Rugby">Rugby</option>
+                     <option value="Other">Other</option>
+                   </select>
+                </div>
+
                 {/* Size */}
                 <div className="space-y-1.5">
                    <label className="text-sm font-bold text-slate-700">Size</label>
@@ -301,6 +325,16 @@ export default function FeedPage() {
                      <option value="FREE">Free</option>
                    </select>
                 </div>
+
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={secondhandOnly}
+                    onChange={(e) => setSecondhandOnly(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Secondhand only
+                </label>
 
              </div>
 
@@ -484,7 +518,7 @@ export default function FeedPage() {
                           <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
                           <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
                           <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSchool('All'); setSelectedSortBy('Newest'); setSearchQuery('');}}
+                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSchool('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery('');}}
                             className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
                           >
                             Show all listings

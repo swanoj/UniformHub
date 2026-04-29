@@ -9,6 +9,8 @@ export interface FeedFilters {
   size?: string;
   school?: string;
   suburb?: string;
+  sportType?: string;
+  secondhandOnly?: boolean;
   sortBy?: string;
 }
 
@@ -41,6 +43,12 @@ export const fetchFeedPosts = async (
   }
   if (filters.suburb && filters.suburb !== 'All') {
     constraints.push(where('suburb', '==', filters.suburb));
+  }
+  if (filters.sportType && filters.sportType !== 'All') {
+    constraints.push(where('sportType', '==', filters.sportType));
+  }
+  if (filters.secondhandOnly) {
+    constraints.push(where('category', '==', 'Secondhand'));
   }
 
   // Handle Search Query array-contains
