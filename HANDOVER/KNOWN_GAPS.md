@@ -26,10 +26,6 @@
   VAPID key is configured and client hook is hardened, but real delivery has not been confirmed with a production token + send pipeline.  
   Next step: run a full push test matrix (foreground/background, Android emulator + real device).
 
-- **Trigger Email extension SMTP still needs production credentials confirmation**  
-  Firestore rules now explicitly block client access to `/mail`, and extension writes bypass via admin SDK.  
-  Next step: confirm final SMTP provider credentials/domain sender and run production-send validation.
-
 - **`isValidPost` rule allows `qty` from 0-3**  
   Next step: confirm with client whether `qty: 0` is intended business logic.
 

@@ -39,7 +39,7 @@
 37. Reports tab — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/app/admin/page.tsx:369`
 38. Threads tab — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/app/admin/page.tsx:411`
 39. Report writes hit `/reports` collection — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/app/posts/[postId]/page.tsx:191`
-40. Trigger Email extension configured + firing on `/reports` writes — 🟡 PARTIAL — `/Users/oliver/Documents/New project/UniformHub-github/app/posts/[postId]/page.tsx:193` writes `/mail`; extension install/SMTP/fire test is console-side
+40. Trigger Email extension configured + firing on `/reports` writes — ✅ DONE — Confirmed working 30 Apr — extension targets named DB ai-studio-...74887, SMTP via Gmail app password, delivery.state=SUCCESS, SMTP 250 OK.
 41. `mail` collection rule allows extension write — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/firestore.rules:113` (client deny; extension uses Admin SDK bypass)
 42. T&Cs tick-box at signup blocks proceed — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/components/FirebaseProvider.tsx:116`
 43. `termsAccepted {version, acceptedAt}` written — ✅ DONE — `/Users/oliver/Documents/New project/UniformHub-github/components/FirebaseProvider.tsx:123`
@@ -64,6 +64,6 @@
 
 ## Summary
 
-- Done: 50
-- Partial: 11
+- Done: 51
+- Partial: 10
 - Not done: 0
