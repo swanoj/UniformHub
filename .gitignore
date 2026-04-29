@@ -5,3 +5,8 @@ coverage/
 *.log
 .env*
 !.env.example
+data/uniformhub-schools.csv
+data/
+Library/
+*.bak*
+tsconfig.tsbuildinfo
