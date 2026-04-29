@@ -63,8 +63,11 @@ export function PostCard({ post, id }: PostCardProps) {
       </Link>
 
       <div className="flex flex-col px-0.5 pb-2">
-        <div className="flex items-center gap-1.5">
-          <span className={`font-semibold text-[16px] leading-tight ${post.originalPrice && Number(post.originalPrice) > Number(post.price) ? 'text-emerald-600' : 'text-[#050505]'}`}>
+        <h3 className="text-[16px] text-[#050505] font-bold line-clamp-1 leading-tight group-hover:underline">
+          {post.title}
+        </h3>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className={`font-medium text-[14px] leading-tight ${post.originalPrice && Number(post.originalPrice) > Number(post.price) ? 'text-emerald-600' : 'text-[#65676B]'}`}>
             {post.type === 'FREE' ? 'FREE' : post.price ? `$${post.price}` : 'Negotiable'}
           </span>
           {post.originalPrice && Number(post.originalPrice) > Number(post.price) && (
@@ -73,9 +76,6 @@ export function PostCard({ post, id }: PostCardProps) {
             </span>
           )}
         </div>
-        <h3 className="text-[14px] text-[#65676B] font-normal line-clamp-1 leading-tight group-hover:underline">
-          {post.title}
-        </h3>
         <p className="text-[12px] text-[#65676B] font-normal flex items-center flex-wrap gap-1 mt-0.5">
           {post.suburb || 'Melbourne, VIC'}
           <span className="text-[10px]">&bull;</span>
