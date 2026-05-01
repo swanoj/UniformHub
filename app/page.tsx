@@ -145,7 +145,16 @@ export default function FeedPage() {
     sortBy: selectedSortBy
   }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSportType, secondhandOnly, selectedSortBy]);
 
-  const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, searchQuery);
+  const effectiveSearchQuery = useMemo(
+    () => `${searchQuery} ${locationQuery}`.trim(),
+    [searchQuery, locationQuery]
+  );
+
+  const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, effectiveSearchQuery);
+  const hasDistanceData = useMemo(
+    () => posts.some((post) => typeof post.distanceKm === 'number' && Number.isFinite(Number(post.distanceKm))),
+    [posts]
+  );
 
   const filteredPosts = useMemo(() => {
     const normalizedLocation = locationQuery.trim().toLowerCase();
@@ -158,13 +167,13 @@ export default function FeedPage() {
         String(post.suburb || '').toLowerCase().includes(normalizedLocation);
 
       const distanceMatches =
+        !hasDistanceData ||
         distanceLimit == null ||
-        post.distanceKm == null ||
-        Number(post.distanceKm) <= distanceLimit;
+        (typeof post.distanceKm === 'number' && Number(post.distanceKm) <= distanceLimit);
 
       return locationMatches && distanceMatches;
     });
-  }, [posts, locationQuery, selectedDistance]);
+  }, [posts, locationQuery, selectedDistance, hasDistanceData]);
 
   const favorites = useMemo(() => {
     const fSchools = profile?.favSchools || [];
@@ -282,6 +291,7 @@ export default function FeedPage() {
                    <select
                      value={selectedDistance}
                      onChange={(e) => setSelectedDistance(e.target.value)}
+                     disabled={!hasDistanceData}
                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
                    >
                      <option value="10">Within 10 km</option>
@@ -290,6 +300,9 @@ export default function FeedPage() {
                      <option value="80">Within 80 km</option>
                      <option value="All">Any distance</option>
                    </select>
+                   {!hasDistanceData && (
+                     <p className="text-[11px] text-slate-500">Distance filter activates when listings have distance data.</p>
+                   )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -517,7 +530,7 @@ export default function FeedPage() {
               <header className="flex items-center justify-between">
                 <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                   <LayoutGrid className="w-5 h-5 text-indigo-600" />
-                  {searchQuery ? `Results for "${searchQuery}"` : "All Listings"}
+                  {effectiveSearchQuery ? `Results for "${effectiveSearchQuery}"` : "All Listings"}
                 </h2>
                 <div className="flex items-center gap-2 text-indigo-600 text-sm font-medium hover:underline cursor-pointer bg-white px-4 py-2 rounded-full border border-slate-200">
                   <MapPin className="w-4 h-4" />
