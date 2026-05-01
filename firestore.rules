@@ -91,14 +91,15 @@ service cloud.firestore {
     }
 
     match /threads/{threadId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow read: if isSignedIn() && (isAdmin() || request.auth.uid in resource.data.participantIds);
       allow create: if isSignedIn() && request.auth.uid in incoming().participantIds;
-      allow update: if isSignedIn() && request.auth.uid in existing().participantIds
-                     && (
-                       incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastMessageAt', 'lastMessageSenderId', 'lastMessageRead'])
-                       || incoming().diff(existing()).affectedKeys().hasOnly(['archived'])
-                     )
-                     && incoming().participantIds == existing().participantIds;
+      allow update: if isSignedIn() && incoming().participantIds == existing().participantIds && (
+                     (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['archived', 'archivedAt', 'archivedBy']))
+                     || (request.auth.uid in existing().participantIds && (
+                          incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastMessageAt', 'lastMessageSenderId', 'lastMessageRead'])
+                          || incoming().diff(existing()).affectedKeys().hasOnly(['archived'])
+                        ))
+                   );
     }
 
     match /threads/{threadId}/messages/{messageId} {

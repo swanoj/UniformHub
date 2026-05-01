@@ -141,7 +141,7 @@ export default function PostDetailPage() {
     try {
       const threadKey = `${post.id}_${user.uid}_${post.ownerId}`;
       const threadsRef = collection(db, 'threads');
-      const q = query(threadsRef, where('threadKey', '==', threadKey), limit(1));
+      const q = query(threadsRef, where('participantIds', 'array-contains', user.uid), where('threadKey', '==', threadKey), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
