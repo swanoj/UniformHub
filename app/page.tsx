@@ -232,6 +232,18 @@ export default function FeedPage() {
     return label;
   }, [selectedLocation, locationQuery, profile?.suburb]);
 
+  const applyLocationSearch = () => {
+    const typed = locationQuery.trim();
+    if (typed) {
+      setSelectedLocation(typed);
+      setLocationQuery(typed);
+    } else {
+      setSelectedLocation('');
+    }
+    setShowLocationSuggestions(false);
+    setLocationPanelOpen(false);
+  };
+
   const favorites = useMemo(() => {
     const fSchools = profile?.favSchools || [];
     const fClubs = profile?.favClubs || [];
@@ -582,6 +594,12 @@ export default function FeedPage() {
                       }}
                       onFocus={() => setShowLocationSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 120)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          applyLocationSearch();
+                        }
+                      }}
                       placeholder="Search suburb or school"
                       className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
                     />
@@ -652,6 +670,26 @@ export default function FeedPage() {
                       />
                       Any distance
                     </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={applyLocationSearch}
+                      className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    >
+                      Search
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationQuery('');
+                        setSelectedLocation('');
+                        setShowLocationSuggestions(false);
+                      }}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Clear
+                    </button>
                   </div>
                </div>
                )}
