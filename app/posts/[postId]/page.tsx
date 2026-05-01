@@ -557,16 +557,19 @@ export default function PostDetailPage() {
               <div className="space-y-4">
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-900">Location</h3>
-                    <button className="text-slate-500 text-sm font-medium">{post.suburb || 'Richmond, VIC'}</button>
+                    <span className="text-slate-500 text-sm font-medium">{post.school || post.suburb || 'Melbourne, VIC'}</span>
                  </div>
-                 <div className="relative aspect-[16/6] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden group">
-                    <div className="absolute inset-0 bg-indigo-50/50 flex items-center justify-center">
-                       <div className="relative">
-                          <MapPin className="w-8 h-8 text-indigo-600 drop-shadow-lg" />
-                          <div className="absolute -inset-1 bg-indigo-600/30 rounded-full animate-ping"></div>
-                       </div>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/10 to-transparent"></div>
+                 <div className="relative aspect-[16/6] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
+                    <iframe
+                      title="location-map"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}&output=embed&z=14`}
+                    />
                  </div>
               </div>
 
