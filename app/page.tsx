@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { PostCard } from '@/components/PostCard';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useFeed } from '@/hooks/useFeed';
 import { 
@@ -122,6 +123,7 @@ function WantedBoardSection({ posts }: { posts: any[] }) {
 }
 
 export default function FeedPage() {
+  const router = useRouter();
   const { user, profile } = useUser();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
@@ -488,15 +490,47 @@ export default function FeedPage() {
             <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
                <div className="flex items-center justify-between">
                   <h1 className="text-[20px] font-bold text-slate-900 leading-tight">Today&apos;s picks</h1>
-                  <button className="text-[#1877F2] text-[15px] font-semibold hover:underline flex items-center gap-1">
+                  <button
+                     onClick={() => document.getElementById('location-search-input')?.focus()}
+                     className="text-[#1877F2] text-[15px] font-semibold hover:underline flex items-center gap-1"
+                  >
                      <MapPin className="w-4 h-4" />
                      {profile?.suburb || 'Melbourne, VIC'} • {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}
                   </button>
                </div>
 
+               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      id="location-search-input"
+                      type="text"
+                      value={locationQuery}
+                      onChange={(e) => setLocationQuery(e.target.value)}
+                      placeholder="Search suburb or school"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <select
+                    value={selectedDistance}
+                    onChange={(e) => setSelectedDistance(e.target.value)}
+                    disabled={!hasDistanceData}
+                    className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="10">10 km</option>
+                    <option value="25">25 km</option>
+                    <option value="40">40 km</option>
+                    <option value="80">80 km</option>
+                    <option value="All">Any distance</option>
+                  </select>
+               </div>
+
                {!searchQuery && (
                  <div className="grid grid-cols-2 gap-3">
-                    <button className="bg-[#E7F3FF] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#DBEAFE] transition-colors text-left">
+                    <button
+                       onClick={() => router.push('/create')}
+                       className="bg-[#E7F3FF] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#DBEAFE] transition-colors text-left"
+                    >
                        <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
                           <Tag className="text-[#1877F2] w-4 h-4" />
                        </div>
@@ -506,7 +540,10 @@ export default function FeedPage() {
                        </div>
                        <ChevronRight className="ml-auto w-4 h-4 text-slate-400 group-hover:text-[#1877F2] transition-colors shrink-0" />
                     </button>
-                    <button className="bg-[#F2F2F2] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#EAEAEA] transition-colors text-left">
+                    <button
+                       onClick={() => { setSelectedType('WTB'); setSearchQuery(''); }}
+                       className="bg-[#F2F2F2] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#EAEAEA] transition-colors text-left"
+                    >
                        <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
                           <MessageCircle className="text-slate-600 w-4 h-4" />
                        </div>
