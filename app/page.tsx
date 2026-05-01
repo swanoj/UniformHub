@@ -530,6 +530,20 @@ export default function FeedPage() {
                     />
                     {showLocationSuggestions && (
                       <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                        {locationQuery.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const typed = locationQuery.trim();
+                              setSelectedLocation(typed);
+                              setLocationQuery(typed);
+                              setShowLocationSuggestions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm font-semibold text-indigo-700 hover:bg-indigo-50 border-b border-slate-100"
+                          >
+                            Use “{locationQuery.trim()}”
+                          </button>
+                        )}
                         {filteredLocationOptions.length > 0 ? (
                           filteredLocationOptions.map((loc) => (
                             <button
@@ -546,7 +560,7 @@ export default function FeedPage() {
                             </button>
                           ))
                         ) : (
-                          <div className="px-4 py-3 text-sm text-slate-500">No matching locations found.</div>
+                          <div className="px-4 py-3 text-sm text-slate-500">No matching saved locations yet.</div>
                         )}
                       </div>
                     )}
