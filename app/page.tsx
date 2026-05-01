@@ -129,7 +129,9 @@ export default function FeedPage() {
   const [selectedType, setSelectedType] = useState('All');
   const [selectedCondition, setSelectedCondition] = useState('All');
   const [selectedSize, setSelectedSize] = useState('All');
-  const [locationQuery, setLocationQuery] = useState('');
+  const [locationQuery, setLocationQuery] = useState(profile?.suburb || '');
+  const [selectedLocation, setSelectedLocation] = useState(profile?.suburb || '');
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState('40');
   const [selectedSportType, setSelectedSportType] = useState('All');
   const [secondhandOnly, setSecondhandOnly] = useState(false);
@@ -148,18 +150,28 @@ export default function FeedPage() {
   }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSportType, secondhandOnly, selectedSortBy]);
 
   const effectiveSearchQuery = useMemo(
-    () => `${searchQuery} ${locationQuery}`.trim(),
-    [searchQuery, locationQuery]
+    () => `${searchQuery} ${selectedLocation}`.trim(),
+    [searchQuery, selectedLocation]
   );
 
   const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, effectiveSearchQuery);
+  const locationOptions = useMemo(() => {
+    const fromPosts = posts.flatMap((post) => [post.school, post.suburb]).filter(Boolean) as string[];
+    const fromProfile = [profile?.suburb, profile?.school].filter(Boolean) as string[];
+    return Array.from(new Set([...fromProfile, ...fromPosts])).sort((a, b) => a.localeCompare(b));
+  }, [posts, profile]);
   const hasDistanceData = useMemo(
     () => posts.some((post) => typeof post.distanceKm === 'number' && Number.isFinite(Number(post.distanceKm))),
     [posts]
   );
+  const filteredLocationOptions = useMemo(() => {
+    const q = locationQuery.trim().toLowerCase();
+    if (!q) return locationOptions.slice(0, 8);
+    return locationOptions.filter((loc) => loc.toLowerCase().includes(q)).slice(0, 8);
+  }, [locationOptions, locationQuery]);
 
   const filteredPosts = useMemo(() => {
-    const normalizedLocation = locationQuery.trim().toLowerCase();
+    const normalizedLocation = selectedLocation.trim().toLowerCase();
     const distanceLimit = selectedDistance === 'All' ? null : Number(selectedDistance);
 
     return posts.filter((post) => {
@@ -175,7 +187,7 @@ export default function FeedPage() {
 
       return locationMatches && distanceMatches;
     });
-  }, [posts, locationQuery, selectedDistance, hasDistanceData]);
+  }, [posts, selectedLocation, selectedDistance, hasDistanceData]);
 
   const favorites = useMemo(() => {
     const fSchools = profile?.favSchools || [];
@@ -210,7 +222,7 @@ export default function FeedPage() {
              </div>
              <div className="space-y-1">
                 <button 
-                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSearchQuery(''); setLocationQuery(''); setSelectedDistance('40');}}
+                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     selectedCategory === 'All' && selectedType === 'All' && selectedCondition === 'All' ? 'bg-[#F0F2F5]' : 'hover:bg-slate-50'
                   }`}
@@ -506,10 +518,38 @@ export default function FeedPage() {
                       id="location-search-input"
                       type="text"
                       value={locationQuery}
-                      onChange={(e) => setLocationQuery(e.target.value)}
+                      onChange={(e) => {
+                        setLocationQuery(e.target.value);
+                        setSelectedLocation('');
+                        setShowLocationSuggestions(true);
+                      }}
+                      onFocus={() => setShowLocationSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 120)}
                       placeholder="Search suburb or school"
                       className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
                     />
+                    {showLocationSuggestions && (
+                      <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                        {filteredLocationOptions.length > 0 ? (
+                          filteredLocationOptions.map((loc) => (
+                            <button
+                              key={loc}
+                              type="button"
+                              onClick={() => {
+                                setSelectedLocation(loc);
+                                setLocationQuery(loc);
+                                setShowLocationSuggestions(false);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                            >
+                              {loc}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-slate-500">No matching locations found.</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <select
                     value={selectedDistance}
@@ -524,6 +564,9 @@ export default function FeedPage() {
                     <option value="All">Any distance</option>
                   </select>
                </div>
+               {locationQuery.trim() && !selectedLocation && (
+                 <p className="text-[11px] text-amber-600">Select a location from the dropdown to apply this filter.</p>
+               )}
 
                {!searchQuery && (
                  <div className="grid grid-cols-2 gap-3">
@@ -602,7 +645,7 @@ export default function FeedPage() {
                           <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
                           <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
                           <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedDistance('40');}}
+                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
                             className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
                           >
                             Show all listings
