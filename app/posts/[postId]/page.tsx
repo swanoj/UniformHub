@@ -241,7 +241,7 @@ export default function PostDetailPage() {
               <p><strong>Reason:</strong> ${reason}</p>
               <p><strong>Reported at:</strong> ${new Date().toLocaleString()}</p>
               <br />
-              <a href="https://uniformhub-prod.web.app/admin?tab=reports" style="display: inline-block; padding: 10px 20px; background-color: #0f172a; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;">Open Admin Reports Tab</a>
+              <a href="https://uniform-hub-seven.vercel.app/admin?tab=reports" style="display: inline-block; padding: 10px 20px; background-color: #0f172a; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;">Open Admin Reports Tab</a>
             </div>
           `
         }

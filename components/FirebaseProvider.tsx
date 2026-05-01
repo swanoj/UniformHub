@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+import { useSchools } from '@/hooks/useSchools';
 
 interface UserContextType {
   user: User | null;
@@ -21,6 +22,18 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState('');
   const [agreed18, setAgreed18] = useState(false);
+  const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
+  const { schools: AUSTRALIAN_SCHOOLS, loading: schoolsLoading } = useSchools();
+
+  const matchedSchool =
+    AUSTRALIAN_SCHOOLS.find((s) => s.toLowerCase() === school.trim().toLowerCase()) || '';
+  const filteredSchools = school.trim()
+    ? AUSTRALIAN_SCHOOLS.filter(
+        (s) =>
+          s.toLowerCase().includes(school.trim().toLowerCase()) &&
+          s.toLowerCase() !== school.trim().toLowerCase()
+      ).slice(0, 8)
+    : [];
 
   useEffect(() => {
     let unsubscribeProfile: () => void;
@@ -68,12 +81,13 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   if (user && profile && profile.onboarded === false) {
     const completeOnboarding = async () => {
       if (!agreed18) return alert('Please confirm your age.');
-      if (!school.trim()) return alert('Please tell us your primary school or club.');
+      if (!school.trim()) return alert('Please select your primary school from the list.');
+      if (!matchedSchool) return alert('Please choose a valid school from the suggestions list.');
 
       await updateDoc(doc(db, 'users', user.uid), {
         onboarded: true,
         isOver18: true,
-        school: school.trim(),
+        school: matchedSchool,
         termsAccepted: {
           version: '2.0',
           acceptedAt: serverTimestamp()
@@ -89,7 +103,43 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
          <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl w-full max-w-sm flex flex-col gap-4 text-left">
            <div>
              <label className="block text-sm font-bold text-slate-700 mb-1">Primary School / Club</label>
-             <input type="text" value={school} onChange={e => setSchool(e.target.value)} placeholder="e.g. State High School" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium" />
+             <div className="relative">
+               <input
+                 type="text"
+                 value={school}
+                 onChange={(e) => setSchool(e.target.value)}
+                 onFocus={() => setShowSchoolSuggestions(true)}
+                 onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+                 placeholder="Start typing your school..."
+                 className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
+               />
+
+               {showSchoolSuggestions && school.trim() && (
+                 <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                   {schoolsLoading ? (
+                     <div className="px-4 py-3 text-sm text-slate-500">Loading schools...</div>
+                   ) : matchedSchool ? (
+                     <div className="px-4 py-3 text-sm font-semibold text-emerald-600">Selected: {matchedSchool}</div>
+                   ) : filteredSchools.length > 0 ? (
+                     filteredSchools.map((s) => (
+                       <button
+                         key={s}
+                         type="button"
+                         onClick={() => {
+                           setSchool(s);
+                           setShowSchoolSuggestions(false);
+                         }}
+                         className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                       >
+                         {s}
+                       </button>
+                     ))
+                   ) : (
+                     <div className="px-4 py-3 text-sm text-slate-500">No matches found. Keep typing to find your school.</div>
+                   )}
+                 </div>
+               )}
+             </div>
            </div>
 
            <div className="flex items-start gap-3 mt-4">
@@ -99,7 +149,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
              </label>
            </div>
 
-           <button onClick={completeOnboarding} disabled={!agreed18 || !school.trim()} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
+           <button onClick={completeOnboarding} disabled={!agreed18 || !school.trim() || !matchedSchool} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
              Complete Profile
            </button>
          </div>

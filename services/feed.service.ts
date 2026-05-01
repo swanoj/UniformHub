@@ -53,7 +53,11 @@ export const fetchFeedPosts = async (
 
   // Handle Search Query array-contains
   if (filters.searchQuery) {
-    const term = filters.searchQuery.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/s+/).filter(w => w.length > 2)[0];
+    const term = filters.searchQuery
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length > 2)[0];
     if (term) {
       constraints.push(where('searchTerms', 'array-contains', term));
     }
