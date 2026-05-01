@@ -31,7 +31,8 @@ import {
   Search,
   MessageCircle,
   Plus,
-  Database
+  Database,
+  LocateFixed
 } from 'lucide-react';
 
 const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
@@ -134,6 +135,8 @@ export default function FeedPage() {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [googleLocationSuggestions, setGoogleLocationSuggestions] = useState<string[]>([]);
   const [locationPanelOpen, setLocationPanelOpen] = useState(false);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState('40');
   const [anyDistance, setAnyDistance] = useState(false);
   const [selectedSportType, setSelectedSportType] = useState('All');
@@ -193,7 +196,12 @@ export default function FeedPage() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(q)}`);
+        const params = new URLSearchParams({ q });
+        if (geoCoords) {
+          params.set('lat', String(geoCoords.lat));
+          params.set('lng', String(geoCoords.lng));
+        }
+        const res = await fetch(`/api/places/autocomplete?${params.toString()}`);
         const data = await res.json();
         if (cancelled) return;
         setGoogleLocationSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
@@ -206,7 +214,7 @@ export default function FeedPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [locationQuery, showLocationSuggestions]);
+  }, [locationQuery, showLocationSuggestions, geoCoords]);
 
   const filteredPosts = useMemo(() => {
     const normalizedLocation = selectedLocation.trim().toLowerCase();
@@ -242,6 +250,33 @@ export default function FeedPage() {
     }
     setShowLocationSuggestions(false);
     setLocationPanelOpen(false);
+  };
+
+  const useCurrentLocation = async () => {
+    if (!navigator.geolocation) return;
+    setResolvingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setGeoCoords({ lat, lng });
+        try {
+          const res = await fetch(`/api/places/reverse?lat=${lat}&lng=${lng}`);
+          const data = await res.json();
+          const suburb = String(data?.suburb || '').trim();
+          if (suburb) {
+            setLocationQuery(suburb);
+            setSelectedLocation(suburb);
+          }
+        } finally {
+          setResolvingLocation(false);
+        }
+      },
+      () => {
+        setResolvingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const favorites = useMemo(() => {
@@ -672,6 +707,15 @@ export default function FeedPage() {
                     </label>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={useCurrentLocation}
+                      disabled={resolvingLocation}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60"
+                    >
+                      <LocateFixed className="w-4 h-4" />
+                      {resolvingLocation ? 'Locating...' : 'Use current location'}
+                    </button>
                     <button
                       type="button"
                       onClick={applyLocationSearch}

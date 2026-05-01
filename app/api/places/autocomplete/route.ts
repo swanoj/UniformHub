@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q')?.trim() || '';
+  const lat = req.nextUrl.searchParams.get('lat')?.trim();
+  const lng = req.nextUrl.searchParams.get('lng')?.trim();
   if (query.length < 2) {
     return NextResponse.json({ suggestions: [] });
   }
@@ -18,8 +20,13 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
     url.searchParams.set('input', query);
-    url.searchParams.set('types', '(cities)');
+    url.searchParams.set('types', '(regions)');
     url.searchParams.set('components', 'country:au');
+    if (lat && lng) {
+      url.searchParams.set('location', `${lat},${lng}`);
+      url.searchParams.set('radius', '50000');
+      url.searchParams.set('strictbounds', 'false');
+    }
     url.searchParams.set('key', apiKey);
 
     const res = await fetch(url.toString(), { cache: 'no-store' });
