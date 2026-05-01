@@ -132,6 +132,8 @@ export default function FeedPage() {
   const [locationQuery, setLocationQuery] = useState(profile?.suburb || '');
   const [selectedLocation, setSelectedLocation] = useState(profile?.suburb || '');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [googleLocationSuggestions, setGoogleLocationSuggestions] = useState<string[]>([]);
+  const [locationPanelOpen, setLocationPanelOpen] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState('40');
   const [selectedSportType, setSelectedSportType] = useState('All');
   const [secondhandOnly, setSecondhandOnly] = useState(false);
@@ -169,6 +171,50 @@ export default function FeedPage() {
     if (!q) return locationOptions.slice(0, 8);
     return locationOptions.filter((loc) => loc.toLowerCase().includes(q)).slice(0, 8);
   }, [locationOptions, locationQuery]);
+  const mergedLocationOptions = useMemo(
+    () => Array.from(new Set([...googleLocationSuggestions, ...filteredLocationOptions])).slice(0, 10),
+    [googleLocationSuggestions, filteredLocationOptions]
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const q = locationQuery.trim();
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!showLocationSuggestions || !key || q.length < 2) {
+      const clearTimer = setTimeout(() => {
+        if (!cancelled) setGoogleLocationSuggestions([]);
+      }, 0);
+      return () => {
+        cancelled = true;
+        clearTimeout(clearTimer);
+      };
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+          `${q}, Victoria, Australia`
+        )}&components=country:AU&key=${key}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (cancelled) return;
+        const names: string[] = (data.results || [])
+          .map((r: any) => {
+            const suburb = (r.address_components || []).find((c: any) =>
+              (c.types || []).includes('locality')
+            );
+            return suburb?.long_name || r.formatted_address?.split(',')?.[0] || '';
+          })
+          .filter(Boolean);
+        setGoogleLocationSuggestions(Array.from(new Set(names)));
+      } catch {
+        if (!cancelled) setGoogleLocationSuggestions([]);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [locationQuery, showLocationSuggestions]);
 
   const filteredPosts = useMemo(() => {
     const normalizedLocation = selectedLocation.trim().toLowerCase();
@@ -188,6 +234,11 @@ export default function FeedPage() {
       return locationMatches && distanceMatches;
     });
   }, [posts, selectedLocation, selectedDistance, hasDistanceData]);
+
+  const activeLocationLabel = useMemo(() => {
+    const label = selectedLocation.trim() || locationQuery.trim() || profile?.suburb || 'Melbourne, VIC';
+    return label;
+  }, [selectedLocation, locationQuery, profile?.suburb]);
 
   const favorites = useMemo(() => {
     const fSchools = profile?.favSchools || [];
@@ -503,15 +554,19 @@ export default function FeedPage() {
                <div className="flex items-center justify-between">
                   <h1 className="text-[20px] font-bold text-slate-900 leading-tight">Today&apos;s picks</h1>
                   <button
-                     onClick={() => document.getElementById('location-search-input')?.focus()}
+                     onClick={() => {
+                       setLocationPanelOpen((v) => !v);
+                       setTimeout(() => document.getElementById('location-search-input')?.focus(), 0);
+                     }}
                      className="text-[#1877F2] text-[15px] font-semibold hover:underline flex items-center gap-1"
                   >
                      <MapPin className="w-4 h-4" />
-                     {profile?.suburb || 'Melbourne, VIC'} • {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}
+                     {activeLocationLabel} • {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}
                   </button>
                </div>
 
-               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+               {locationPanelOpen && (
+               <div className="grid grid-cols-[1fr_auto] gap-2">
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -544,8 +599,8 @@ export default function FeedPage() {
                             Use “{locationQuery.trim()}”
                           </button>
                         )}
-                        {filteredLocationOptions.length > 0 ? (
-                          filteredLocationOptions.map((loc) => (
+                        {mergedLocationOptions.length > 0 ? (
+                          mergedLocationOptions.map((loc) => (
                             <button
                               key={loc}
                               type="button"
@@ -568,7 +623,6 @@ export default function FeedPage() {
                   <select
                     value={selectedDistance}
                     onChange={(e) => setSelectedDistance(e.target.value)}
-                    disabled={!hasDistanceData}
                     className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="10">10 km</option>
@@ -578,6 +632,7 @@ export default function FeedPage() {
                     <option value="All">Any distance</option>
                   </select>
                </div>
+               )}
                {locationQuery.trim() && !selectedLocation && (
                  <p className="text-[11px] text-amber-600">Select a location from the dropdown to apply this filter.</p>
                )}
@@ -626,10 +681,17 @@ export default function FeedPage() {
                   <LayoutGrid className="w-5 h-5 text-indigo-600" />
                   {effectiveSearchQuery ? `Results for "${effectiveSearchQuery}"` : "All Listings"}
                 </h2>
-                <div className="flex items-center gap-2 text-indigo-600 text-sm font-medium hover:underline cursor-pointer bg-white px-4 py-2 rounded-full border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocationPanelOpen(true);
+                    setTimeout(() => document.getElementById('location-search-input')?.focus(), 0);
+                  }}
+                  className="flex items-center gap-2 text-indigo-600 text-sm font-medium hover:underline cursor-pointer bg-white px-4 py-2 rounded-full border border-slate-200"
+                >
                   <MapPin className="w-4 h-4" />
-                  <span>{profile?.suburb || 'Richmond'} · {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}</span>
-                </div>
+                  <span>{activeLocationLabel} · {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}</span>
+                </button>
               </header>
 
               {error ? (
