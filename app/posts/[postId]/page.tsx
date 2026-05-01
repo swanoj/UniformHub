@@ -560,16 +560,29 @@ export default function PostDetailPage() {
                     <span className="text-slate-500 text-sm font-medium">{post.school || post.suburb || 'Melbourne, VIC'}</span>
                  </div>
                  <div className="relative aspect-[16/6] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
-                    <iframe
-                      title="location-map"
-                      width="100%"
-                      height="100%"
-                      style={{ border: 0 }}
-                      loading="lazy"
-                      allowFullScreen
-                      referrerPolicy="no-referrer-when-downgrade"
-                      src={`https://maps.google.com/maps?q=${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}&output=embed&z=14`}
-                    />
+                    {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                      <iframe
+                        title="location-map"
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}&zoom=14`}
+                      />
+                    ) : (
+                      <a
+                        href={`https://www.google.com/maps/search/${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                      >
+                        <MapPin className="w-8 h-8 text-indigo-600" />
+                        <span className="text-sm font-bold text-indigo-700">{post.school || post.suburb}</span>
+                        <span className="text-xs text-indigo-500 font-medium">Tap to open in Google Maps</span>
+                      </a>
+                    )}
                  </div>
               </div>
 
