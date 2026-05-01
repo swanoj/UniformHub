@@ -135,6 +135,7 @@ export default function FeedPage() {
   const [googleLocationSuggestions, setGoogleLocationSuggestions] = useState<string[]>([]);
   const [locationPanelOpen, setLocationPanelOpen] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState('40');
+  const [anyDistance, setAnyDistance] = useState(false);
   const [selectedSportType, setSelectedSportType] = useState('All');
   const [secondhandOnly, setSecondhandOnly] = useState(false);
   const [selectedSortBy, setSelectedSortBy] = useState('Newest');
@@ -209,7 +210,7 @@ export default function FeedPage() {
 
   const filteredPosts = useMemo(() => {
     const normalizedLocation = selectedLocation.trim().toLowerCase();
-    const distanceLimit = selectedDistance === 'All' ? null : Number(selectedDistance);
+    const distanceLimit = anyDistance ? null : Number(selectedDistance);
 
     return posts.filter((post) => {
       const locationMatches =
@@ -224,7 +225,7 @@ export default function FeedPage() {
 
       return locationMatches && distanceMatches;
     });
-  }, [posts, selectedLocation, selectedDistance, hasDistanceData]);
+  }, [posts, selectedLocation, selectedDistance, hasDistanceData, anyDistance]);
 
   const activeLocationLabel = useMemo(() => {
     const label = selectedLocation.trim() || locationQuery.trim() || profile?.suburb || 'Melbourne, VIC';
@@ -350,12 +351,22 @@ export default function FeedPage() {
                      disabled={!hasDistanceData}
                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
                    >
-                     <option value="10">Within 10 km</option>
-                     <option value="25">Within 25 km</option>
-                     <option value="40">Within 40 km</option>
-                     <option value="80">Within 80 km</option>
-                     <option value="All">Any distance</option>
-                   </select>
+                    <option value="10">Within 10 km</option>
+                    <option value="25">Within 25 km</option>
+                    <option value="40">Within 40 km</option>
+                    <option value="60">Within 60 km</option>
+                    <option value="80">Within 80 km</option>
+                    <option value="100">Within 100 km</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+                    <input
+                      type="checkbox"
+                      checked={anyDistance}
+                      onChange={(e) => setAnyDistance(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Any distance
+                  </label>
                    {!hasDistanceData && (
                      <p className="text-[11px] text-slate-500">Distance filter activates when listings have distance data.</p>
                    )}
@@ -552,12 +563,12 @@ export default function FeedPage() {
                      className="text-[#1877F2] text-[15px] font-semibold hover:underline flex items-center gap-1"
                   >
                      <MapPin className="w-4 h-4" />
-                     {activeLocationLabel} • {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}
+                     {activeLocationLabel} • {anyDistance ? 'Any distance' : `${selectedDistance} km`}
                   </button>
                </div>
 
                {locationPanelOpen && (
-               <div className="grid grid-cols-[1fr_auto] gap-2">
+               <div className="grid grid-cols-1 gap-2">
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -611,17 +622,37 @@ export default function FeedPage() {
                       </div>
                     )}
                   </div>
-                  <select
-                    value={selectedDistance}
-                    onChange={(e) => setSelectedDistance(e.target.value)}
-                    className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="10">10 km</option>
-                    <option value="25">25 km</option>
-                    <option value="40">40 km</option>
-                    <option value="80">80 km</option>
-                    <option value="All">Any distance</option>
-                  </select>
+                  <div className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-2">
+                      <span>Range</span>
+                      <span>{anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="100"
+                      step="5"
+                      value={selectedDistance}
+                      onChange={(e) => {
+                        setSelectedDistance(e.target.value);
+                        setAnyDistance(false);
+                      }}
+                      className="w-full accent-indigo-600"
+                    />
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>5km</span>
+                      <span>100km</span>
+                    </div>
+                    <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={anyDistance}
+                        onChange={(e) => setAnyDistance(e.target.checked)}
+                        className="rounded border-slate-300"
+                      />
+                      Any distance
+                    </label>
+                  </div>
                </div>
                )}
                {locationQuery.trim() && !selectedLocation && (
@@ -681,7 +712,7 @@ export default function FeedPage() {
                   className="flex items-center gap-2 text-indigo-600 text-sm font-medium hover:underline cursor-pointer bg-white px-4 py-2 rounded-full border border-slate-200"
                 >
                   <MapPin className="w-4 h-4" />
-                  <span>{activeLocationLabel} · {selectedDistance === 'All' ? 'Any distance' : `${selectedDistance} km`}</span>
+                  <span>{activeLocationLabel} · {anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
                 </button>
               </header>
 
@@ -712,7 +743,7 @@ export default function FeedPage() {
                           <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
                           <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
                           <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
+                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
                             className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
                           >
                             Show all listings
