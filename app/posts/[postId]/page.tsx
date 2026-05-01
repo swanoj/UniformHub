@@ -369,7 +369,14 @@ export default function PostDetailPage() {
                  <h1 className="text-2xl font-bold text-slate-900 leading-tight">
                    {post.title}
                  </h1>
-                 
+
+                 {(post.school || post.suburb) && (
+                   <p className="text-sm font-semibold text-indigo-600 flex items-center gap-1">
+                     <MapPin className="w-3.5 h-3.5 shrink-0" />
+                     {post.school || post.suburb}
+                   </p>
+                 )}
+
                  <div>
                    <p className={`text-[28px] font-black leading-none flex items-center gap-2 ${post.originalPrice && Number(post.originalPrice) > Number(post.price) ? 'text-emerald-600' : 'text-slate-900'}`}>
                      {post.type === 'FREE' ? 'FREE' : post.price ? `$${post.price}` : 'Negotiable'}
