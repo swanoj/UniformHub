@@ -109,6 +109,8 @@ export function Navbar() {
       router.push(`/posts/${notif.referenceId}`);
     } else if (notif.type === 'JOIN_REQUEST') {
       router.push(`/communities/${notif.referenceId}/settings`);
+    } else if (notif.type === 'MESSAGE') {
+      router.push(`/chat/${notif.referenceId}`);
     }
   };
 

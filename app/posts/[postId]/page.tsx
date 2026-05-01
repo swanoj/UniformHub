@@ -161,6 +161,40 @@ export default function PostDetailPage() {
           createdAt: serverTimestamp(),
         };
         const docRef = await addDoc(collection(db, 'threads'), newThread);
+
+        // Notify seller of new conversation
+        try {
+          await addDoc(collection(db, `users/${post.ownerId}/notifications`), {
+            userId: post.ownerId,
+            type: 'MESSAGE',
+            actorId: user.uid,
+            actorName: profile?.displayName || 'Someone',
+            actorPhotoUrl: profile?.photoUrl || '',
+            referenceId: docRef.id,
+            message: `wants to buy: ${post.title}`,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
+          const ownerDoc = await getDoc(doc(db, 'users', post.ownerId));
+          if (ownerDoc.exists()) {
+            const tokens = ownerDoc.data().fcmTokens;
+            if (tokens?.length > 0) {
+              fetch('/api/notifications/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tokens,
+                  title: `${profile?.displayName || 'Someone'} is interested in your listing`,
+                  body: post.title,
+                  data: { threadId: docRef.id, type: 'MESSAGE' },
+                }),
+              }).catch(() => {});
+            }
+          }
+        } catch (notifErr) {
+          console.error('Failed to send new-thread notification', notifErr);
+        }
+
         router.push(`/chat/${docRef.id}`);
       }
     } catch (error) {

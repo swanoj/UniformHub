@@ -16,7 +16,7 @@ import { useBlocks } from '@/hooks/useBlocks';
 export default function ChatPage() {
   const { threadId } = useParams();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, profile } = useUser();
   const [thread, setThread] = useState<any>(null);
   const [fetchedThreads, setFetchedThreads] = useState<any[]>([]);
   const { blockedUserIds, loading: blocksLoading } = useBlocks(user?.uid);
@@ -110,23 +110,40 @@ export default function ChatPage() {
         lastMessageSenderId: user.uid
       });
 
-      // Send Push Notification
+      // In-app + push notification to the other participant
       const otherUserId = thread.participantIds.find((id: string) => id !== user.uid);
       if (otherUserId) {
+        const senderName = profile?.displayName || user.displayName || 'UniformHub User';
+        const senderPhoto = profile?.photoUrl || user.photoURL || '';
+
+        // In-app notification (Firestore — powers the bell icon)
+        addDoc(collection(db, `users/${otherUserId}/notifications`), {
+          userId: otherUserId,
+          type: 'MESSAGE',
+          actorId: user.uid,
+          actorName: senderName,
+          actorPhotoUrl: senderPhoto,
+          referenceId: threadId,
+          message: text.length > 60 ? text.slice(0, 57) + '…' : text,
+          read: false,
+          createdAt: serverTimestamp(),
+        }).catch(e => console.error('In-app notification failed', e));
+
+        // FCM push notification
         const recipientDoc = await getDoc(doc(db, 'users', otherUserId));
         if (recipientDoc.exists()) {
-          const recipientData = recipientDoc.data();
-          const tokens = recipientData.fcmTokens;
-          if (tokens && tokens.length > 0) {
+          const tokens = recipientDoc.data().fcmTokens;
+          if (tokens?.length > 0) {
             fetch('/api/notifications/send', {
               method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 tokens,
-                title: `New message from ${user.displayName || 'UniformHub User'}`,
+                title: `New message from ${senderName}`,
                 body: text,
-                data: { threadId, type: 'chat' }
-              })
-            }).catch(e => console.error('Notification failed', e));
+                data: { threadId, type: 'MESSAGE' },
+              }),
+            }).catch(e => console.error('FCM notification failed', e));
           }
         }
       }
