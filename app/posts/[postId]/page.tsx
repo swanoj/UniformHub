@@ -283,7 +283,7 @@ export default function PostDetailPage() {
       <Navbar />
 
       <main className="flex-1 flex flex-col md:flex-row h-full overflow-hidden w-full">
-        <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden group">
+        <div className="h-72 shrink-0 md:h-auto md:flex-1 relative bg-black flex items-center justify-center overflow-hidden group">
            <div className="absolute top-4 left-4 z-20 flex gap-2">
              <button onClick={() => router.back()} className="w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors">
                <ChevronLeft className="w-6 h-6" />
@@ -315,7 +315,7 @@ export default function PostDetailPage() {
 
            <motion.div 
              layoutId={`post-image-${postId}`}
-             className="relative w-full h-[60vh] md:h-full cursor-zoom-in"
+             className="relative w-full h-full cursor-zoom-in"
              onClick={() => setIsFullscreen(true)}
            >
               <Image 
@@ -342,7 +342,7 @@ export default function PostDetailPage() {
            )}
         </div>
 
-        <div className="w-full md:w-90 bg-white border-l border-slate-200 overflow-y-auto flex flex-col shrink-0">
+        <div className="flex-1 min-h-0 md:flex-none md:w-90 bg-white border-l border-slate-200 overflow-y-auto flex flex-col md:shrink-0">
            <div className="p-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-900 line-clamp-1">Listing Details</h2>
               <div className="flex gap-1">
