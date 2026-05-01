@@ -267,12 +267,16 @@ export function Navbar() {
                 >
                   Google Login
                 </button>
-                <button
-                  onClick={handleLoginApple}
-                  className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-                >
-                  Apple Login
-                </button>
+                {process.env.NEXT_PUBLIC_ENABLE_APPLE_LOGIN === 'true' ? (
+                  <button
+                    onClick={handleLoginApple}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                  >
+                    Apple Login
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-400 font-medium px-2">Apple Sign-In coming soon</span>
+                )}
               </div>
             )}
           </div>
