@@ -2,9 +2,11 @@
 
 ## 1) Phase 1 deliverables not yet shipped
 
-- **Apple Sign-In not configured**  
-  Next step: complete Apple Developer setup (Service ID, Key ID, Team ID, private key), enable Apple provider in Firebase Auth, then run a full sign-in test on iOS.  
-  Estimate: 1-2 hours.
+- **Apple Sign-In runtime config pending**  
+  Code path is already wired (`lib/firebase.ts` and login button), but Firebase Apple provider is not configured yet.  
+  Required inputs come from Sascha's Apple Developer account (Email 4 §8): Service ID, Team ID, Key ID, and `.p8` private key.  
+  This setup is required for iOS App Store submission when third-party sign-in is offered (Apple Guideline 4.8).  
+  Next step: complete provider setup in Firebase once Apple Dev account is live, then run end-to-end Apple sign-in validation.
 
 - **Sports directory not implemented**  
   Next step: define scope with client first (sports taxonomy, search UX, moderation model, and data source), then ship in a scoped follow-up sprint.
