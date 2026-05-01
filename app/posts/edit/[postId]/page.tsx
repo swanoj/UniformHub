@@ -52,7 +52,11 @@ export default function EditPostPage() {
         const docSnap = await getDoc(dRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.ownerId !== user?.uid && user?.email !== 'oliverjs090@gmail.com') {
+          if (
+            data.ownerId !== user?.uid &&
+            user?.email !== 'oliverjs090@gmail.com' &&
+            user?.email !== 'sascha.crawford@hotmail.com'
+          ) {
              alert('You are not authorized to edit this post.');
              router.push('/');
              return;
