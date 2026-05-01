@@ -448,27 +448,27 @@ export default function FeedPage() {
                </div>
 
                {!searchQuery && (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-[#E7F3FF] p-4 rounded-xl flex items-center gap-4 group cursor-pointer hover:bg-[#DBEAFE] transition-colors">
-                       <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <Tag className="text-[#1877F2] w-6 h-6" />
+                 <div className="grid grid-cols-2 gap-3">
+                    <button className="bg-[#E7F3FF] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#DBEAFE] transition-colors text-left">
+                       <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
+                          <Tag className="text-[#1877F2] w-4 h-4" />
                        </div>
-                       <div>
-                          <p className="font-bold text-slate-900 text-[15px]">Sell items</p>
-                          <p className="text-sm text-slate-600">List what you don&apos;t need anymore.</p>
+                       <div className="min-w-0">
+                          <p className="font-bold text-slate-900 text-[14px] leading-tight">Sell items</p>
+                          <p className="text-xs text-slate-600 line-clamp-1">List what you don&apos;t need.</p>
                        </div>
-                       <ChevronRight className="ml-auto w-5 h-5 text-slate-400 group-hover:text-[#1877F2] transition-colors" />
-                    </div>
-                    <div className="bg-[#F2F2F2] p-4 rounded-xl flex items-center gap-4 group cursor-pointer hover:bg-[#EAEAEA] transition-colors">
-                       <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <MessageCircle className="text-slate-600 w-6 h-6" />
+                       <ChevronRight className="ml-auto w-4 h-4 text-slate-400 group-hover:text-[#1877F2] transition-colors shrink-0" />
+                    </button>
+                    <button className="bg-[#F2F2F2] p-3 rounded-xl flex items-center gap-2.5 group hover:bg-[#EAEAEA] transition-colors text-left">
+                       <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
+                          <MessageCircle className="text-slate-600 w-4 h-4" />
                        </div>
-                       <div>
-                          <p className="font-bold text-slate-900 text-[15px]">Community requests</p>
-                          <p className="text-sm text-slate-600">See what others are looking for.</p>
+                       <div className="min-w-0">
+                          <p className="font-bold text-slate-900 text-[14px] leading-tight">Requests</p>
+                          <p className="text-xs text-slate-600 line-clamp-1">See what others want.</p>
                        </div>
-                       <ChevronRight className="ml-auto w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                    </div>
+                       <ChevronRight className="ml-auto w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
+                    </button>
                  </div>
                )}
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, useDeferredValue } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { PostCard } from '@/components/PostCard';
@@ -29,9 +29,13 @@ function UniformsContent() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [selectedCondition, setSelectedCondition] = useState('All');
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [searchQuery] = useState(initialQuery);
+  const [queryDraft, setQueryDraft] = useState(initialQuery);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
+  const deferredQuery = useDeferredValue(queryDraft);
+  const debouncedQuery = deferredQuery.trim();
+  const isSearching = queryDraft !== deferredQuery;
 
   const filters = useMemo(() => ({
     category: selectedCategory,
@@ -40,7 +44,7 @@ function UniformsContent() {
     sortBy: sortBy === 'price-low' ? 'PriceLowToHigh' : sortBy === 'price-high' ? 'PriceHighToLow' : 'Newest'
   }), [selectedCategory, selectedType, selectedCondition, sortBy]);
 
-  const { posts, loading, hasMore, fetchingMore, fetchPosts } = useFeed(filters, searchQuery);
+  const { posts, loading, hasMore, fetchingMore, fetchPosts } = useFeed(filters, debouncedQuery || searchQuery);
 
   const filteredPosts = posts;
 
@@ -56,15 +60,21 @@ function UniformsContent() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
               <input 
                 type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={queryDraft}
+                onChange={(e) => setQueryDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setQueryDraft('');
+                }}
                 placeholder="Search school gear & uniforms..."
+                inputMode="search"
+                autoComplete="off"
                 className="w-full bg-slate-100 border-none rounded-2xl py-3.5 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
               />
-              {searchQuery && (
+              {queryDraft && (
                 <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full transition-colors"
+                  onClick={() => setQueryDraft('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-full transition-colors"
+                  aria-label="Clear search"
                 >
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
@@ -78,6 +88,9 @@ function UniformsContent() {
               <span className="hidden sm:inline">Filters</span>
             </button>
           </div>
+          {isSearching && (
+            <p className="text-xs text-slate-500 font-semibold pl-1">Updating results...</p>
+          )}
 
           <AnimatePresence>
             {isFilterOpen && (
@@ -180,7 +193,7 @@ function UniformsContent() {
                        <p className="text-slate-400 text-sm italic mt-1 px-4">Maybe try different keywords or expand your search distance?</p>
                      </div>
                      <button 
-                       onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSearchQuery('');}}
+                       onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setQueryDraft('');}}
                        className="text-indigo-600 font-black text-xs uppercase tracking-widest bg-indigo-50 px-6 py-3 rounded-xl hover:bg-indigo-100 transition-all"
                      >
                        Reset All Filters
