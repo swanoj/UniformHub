@@ -179,8 +179,8 @@ export default function FeedPage() {
   React.useEffect(() => {
     let cancelled = false;
     const q = locationQuery.trim();
-    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!showLocationSuggestions || !key || q.length < 2) {
+
+    if (!showLocationSuggestions || q.length < 2) {
       const clearTimer = setTimeout(() => {
         if (!cancelled) setGoogleLocationSuggestions([]);
       }, 0);
@@ -189,27 +189,18 @@ export default function FeedPage() {
         clearTimeout(clearTimer);
       };
     }
+
     const timer = setTimeout(async () => {
       try {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-          `${q}, Victoria, Australia`
-        )}&components=country:AU&key=${key}`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (cancelled) return;
-        const names: string[] = (data.results || [])
-          .map((r: any) => {
-            const suburb = (r.address_components || []).find((c: any) =>
-              (c.types || []).includes('locality')
-            );
-            return suburb?.long_name || r.formatted_address?.split(',')?.[0] || '';
-          })
-          .filter(Boolean);
-        setGoogleLocationSuggestions(Array.from(new Set(names)));
+        setGoogleLocationSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
       } catch {
         if (!cancelled) setGoogleLocationSuggestions([]);
       }
-    }, 300);
+    }, 220);
+
     return () => {
       cancelled = true;
       clearTimeout(timer);
