@@ -42,6 +42,10 @@
   `vercel.json` defines a daily cron hit to `/api/cron/cleanup` at 02:00 UTC.  
   Next step: if not deploying on Vercel, configure an alternative scheduler (Cloud Scheduler, GitHub Actions, or equivalent) to call this endpoint daily.
 
+- **Gemini API key is browser-exposed in current AI autofill flow**  
+  `NEXT_PUBLIC_GEMINI_API_KEY` is consumed in client code, so the key is bundled into browser JS and can be extracted.  
+  Next step: move AI autofill to a server-side API route in Phase 2 and keep the Gemini key as a non-public server env var.
+
 ## 3) Code-level technical debt
 
 - **Semantic fallback issue in create flow**  
