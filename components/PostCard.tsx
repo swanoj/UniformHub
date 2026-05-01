@@ -81,10 +81,6 @@ export function PostCard({ post, id }: PostCardProps) {
           <span className="text-[10px]">&bull;</span>
           <span>{timeAgo}</span>
         </p>
-        <p className="text-xs text-gray-600 mt-1 leading-tight">
-          Keep chat in-app. Sharing personal contact details may breach our T&amp;Cs.
-        </p>
-
         {post.verifiedCondition && (
           <div className="mt-1 flex items-center gap-1 text-indigo-600 text-[10px] font-bold uppercase tracking-tight">
              <ShieldCheck className="w-3 h-3" />
