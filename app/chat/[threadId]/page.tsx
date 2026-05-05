@@ -12,6 +12,8 @@ import { Send, User, ChevronLeft, Info, ShoppingBag, Search, MoreVertical, Shiel
 import { format, formatDistanceToNow } from 'date-fns';
 
 import { useBlocks } from '@/hooks/useBlocks';
+import { ErrorState } from '@/components/ErrorState';
+import { ChatThreadSkeleton } from '@/components/Skeleton';
 
 export default function ChatPage() {
   const { threadId } = useParams();
@@ -25,6 +27,8 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch all user threads for the left sidebar
@@ -36,9 +40,16 @@ export default function ChatPage() {
       where('participantIds', 'array-contains', user.uid),
       orderBy('lastMessageAt', 'desc')
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFetchedThreads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setFetchedThreads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      },
+      (error) => {
+        console.error(error);
+        setLoadError("Couldn't load conversations. Check your connection and try again.");
+      }
+    );
     return () => unsubscribe();
   }, [user]);
 
@@ -55,33 +66,49 @@ export default function ChatPage() {
     if (!threadId || !user) return;
 
     const threadRef = doc(db, 'threads', threadId as string);
-    const unsubscribeThread = onSnapshot(threadRef, (snap) => {
-      if (snap.exists()) {
-        const data = { id: snap.id, ...snap.data() } as any;
-        if (data.archived) {
+    const unsubscribeThread = onSnapshot(
+      threadRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = { id: snap.id, ...snap.data() } as any;
+          if (data.archived) {
+            router.push('/inbox');
+            return;
+          }
+          setThread(data);
+
+          if (data?.postId) {
+            getDoc(doc(db, 'posts', data.postId)).then(pSnap => {
+              if (pSnap.exists()) setPost({ id: pSnap.id, ...pSnap.data() });
+            });
+          }
+        } else {
           router.push('/inbox');
-          return;
         }
-        setThread(data);
-        
-        if (data?.postId) {
-          getDoc(doc(db, 'posts', data.postId)).then(pSnap => {
-            if (pSnap.exists()) setPost({ id: pSnap.id, ...pSnap.data() });
-          });
-        }
-      } else {
-        router.push('/inbox');
+        setLoadError('');
+        setLoading(false);
+      },
+      (error) => {
+        console.error(error);
+        setLoadError("Couldn't load this conversation. Check your connection and try again.");
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     const messagesRef = collection(db, 'threads', threadId as string, 'messages');
     const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
-    const unsubscribeMsgs = onSnapshot(qMsg, (snapshot) => {
-      const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-      setMessages(msgs);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    });
+    const unsubscribeMsgs = onSnapshot(
+      qMsg,
+      (snapshot) => {
+        const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+        setMessages(msgs);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      },
+      (error) => {
+        console.error(error);
+        setLoadError("Couldn't load messages. Check your connection and try again.");
+      }
+    );
 
     return () => {
       unsubscribeThread();
@@ -96,6 +123,7 @@ export default function ChatPage() {
     const text = newMessage.trim();
     setNewMessage('');
     setSending(true);
+    setSendError('');
 
     try {
       await addDoc(collection(db, 'threads', threadId as string, 'messages'), {
@@ -149,14 +177,17 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error("Error sending message", error);
+      setNewMessage(text);
+      setSendError("Couldn't send message. Try again.");
     } finally {
       setSending(false);
     }
   };
 
   if ((loading || blocksLoading) && !threads.length) return (
-    <div className="h-screen flex items-center justify-center bg-white">
-      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full" />
+    <div className="h-screen bg-slate-50">
+      <Navbar />
+      <ChatThreadSkeleton />
     </div>
   );
 
@@ -233,7 +264,13 @@ export default function ChatPage() {
            </header>
 
            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg) => {
+              {loadError ? (
+                <ErrorState heading="Couldn't load messages" body={loadError} onRetry={() => window.location.reload()} />
+              ) : messages.length === 0 ? (
+                <p className="pt-10 text-center text-sm font-medium text-slate-400">
+                  Say hi — sellers respond faster to friendly messages.
+                </p>
+              ) : messages.map((msg) => {
                 const isMe = msg.senderId === user?.uid;
                 const time = msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : '...';
                 return (
@@ -255,6 +292,9 @@ export default function ChatPage() {
            </div>
 
            <div className="p-4 bg-white border-t border-slate-200">
+             {sendError && (
+               <p className="mb-2 text-xs font-semibold text-rose-600">{sendError}</p>
+             )}
              <form onSubmit={handleSendMessage} className="flex gap-2">
                <div className="flex-1 relative">
                  <input 
@@ -269,7 +309,7 @@ export default function ChatPage() {
                    disabled={!newMessage.trim() || sending}
                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center disabled:opacity-30 transition-all hover:bg-indigo-700 active:scale-90"
                  >
-                   <Send className="w-4 h-4 rotate-45 mr-0.5 mb-0.5" />
+                   {sending ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Send className="w-4 h-4 rotate-45 mr-0.5 mb-0.5" />}
                  </button>
                </div>
              </form>

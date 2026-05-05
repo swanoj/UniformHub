@@ -10,11 +10,15 @@ import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, ChevronRight, Inbox as InboxIcon, User, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBlocks } from '@/hooks/useBlocks';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ChatListSkeleton } from '@/components/Skeleton';
 
 export default function InboxPage() {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [fetchedThreads, setFetchedThreads] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState('');
   const { blockedUserIds, loading: blocksLoading } = useBlocks(user?.uid);
 
   useEffect(() => {
@@ -27,14 +31,23 @@ export default function InboxPage() {
       orderBy('lastMessageAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const threadsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setFetchedThreads(threadsData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const threadsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setFetchedThreads(threadsData);
+        setLoadError('');
+        setLoading(false);
+      },
+      (error) => {
+        console.error(error);
+        setLoadError("Couldn't load messages. Check your connection and try again.");
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user]);
@@ -75,10 +88,10 @@ export default function InboxPage() {
           </div>
         </header>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
-          </div>
+        {loading || blocksLoading ? (
+          <ChatListSkeleton />
+        ) : loadError ? (
+          <ErrorState heading="Couldn't load messages" body={loadError} onRetry={() => window.location.reload()} />
         ) : (
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
@@ -131,12 +144,12 @@ export default function InboxPage() {
                   );
                 })
               ) : (
-                <div className="py-24 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
-                  <InboxIcon className="w-12 h-12 text-slate-100 mx-auto mb-3" />
-                  <h3 className="text-lg font-bold text-slate-800 tracking-tight">Your inbox is clear</h3>
-                  <p className="text-slate-400 text-xs italic">Found gear you need? Start a conversation with a seller!</p>
-                  <Link href="/" className="inline-block mt-8 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-widest px-6 py-2 rounded-lg hover:bg-indigo-100 transition-all">Go Browsing</Link>
-                </div>
+                <EmptyState
+                  icon="□"
+                  heading="No messages yet"
+                  body="Start a conversation by tapping a listing and messaging the seller."
+                  action={{ label: "Browse listings", href: "/" }}
+                />
               )}
             </AnimatePresence>
           </div>

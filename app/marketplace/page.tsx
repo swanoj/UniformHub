@@ -8,6 +8,9 @@ import { useFeed } from '@/hooks/useFeed';
 import { CONDITION_OPTIONS } from '@/lib/constants';
 import { useUser } from '@/components/FirebaseProvider';
 import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ListingGridSkeleton } from '@/components/Skeleton';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -48,7 +51,7 @@ function MarketplaceContent() {
     condition: selectedCondition,
   }), [selectedCategory, selectedType, selectedCondition]);
 
-  const { posts, loading, hasMore, fetchingMore, fetchPosts } = useFeed(filters, debouncedQuery || searchQuery);
+  const { posts, loading, hasMore, fetchingMore, fetchPosts, error } = useFeed(filters, debouncedQuery || searchQuery);
 
   const filteredPosts = useMemo(() => {
     let result = [...posts];
@@ -71,6 +74,15 @@ function MarketplaceContent() {
     }
     return result;
   }, [posts, sortBy, hasHomeLocation, profile?.homeSuburb, profile?.homePostcode]);
+  const resetFilters = () => {
+    setSelectedCategory('All');
+    setSelectedType('All');
+    setSelectedCondition('All');
+    setQueryDraft('');
+    setSortBy('newest');
+  };
+  const hasActiveFilters = selectedCategory !== 'All' || selectedType !== 'All' || selectedCondition !== 'All' || queryDraft.trim();
+  const noListingsAtAll = posts.length === 0 && !hasActiveFilters;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -197,10 +209,11 @@ function MarketplaceContent() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-40 gap-4">
-             <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Searching Inventory...</p>
+        {error ? (
+          <ErrorState heading="Couldn't load listings" body="Check your connection and try again." onRetry={() => fetchPosts(false)} />
+        ) : loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-8">
+            <ListingGridSkeleton count={10} />
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-8">
@@ -210,22 +223,19 @@ function MarketplaceContent() {
                   <PostCard key={post.id} id={post.id} post={post} />
                 ))
               ) : (
-                <div className="col-span-full py-40 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                   <div className="max-w-xs mx-auto space-y-4">
-                     <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto">
-                        <Tag className="w-8 h-8 text-slate-200" />
-                     </div>
-                     <div>
-                       <h3 className="text-xl font-bold text-slate-800 tracking-tight">No results matched</h3>
-                       <p className="text-slate-400 text-sm italic mt-1 px-4">Maybe try different keywords or expand your search distance?</p>
-                     </div>
-                     <button 
-                       onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setQueryDraft('');}}
-                       className="text-indigo-600 font-black text-xs uppercase tracking-widest bg-indigo-50 px-6 py-3 rounded-xl hover:bg-indigo-100 transition-all"
-                     >
-                       Reset All Filters
-                     </button>
-                   </div>
+                <div className="col-span-full">
+                  <EmptyState
+                    icon="□"
+                    heading={noListingsAtAll ? "No listings yet" : debouncedQuery ? `No results for "${debouncedQuery}"` : "No matches"}
+                    body={
+                      noListingsAtAll
+                        ? "Be the first to list a uniform — it takes about a minute."
+                        : debouncedQuery
+                          ? "Check spelling or try a broader term."
+                          : "Try widening your distance, removing a filter, or searching another school."
+                    }
+                    action={noListingsAtAll ? { label: "Create a listing", href: "/create" } : { label: "Clear filters", onClick: resetFilters }}
+                  />
                 </div>
               )}
             </AnimatePresence>

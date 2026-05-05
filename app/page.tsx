@@ -10,6 +10,9 @@ import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useFeed } from '@/hooks/useFeed';
 import { CONDITION_OPTIONS, SPORT_TYPES } from '@/lib/constants';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ListingGridSkeleton } from '@/components/Skeleton';
 import { 
   Filter, 
   Search as SearchIcon, 
@@ -245,6 +248,30 @@ export default function FeedPage() {
     return [...fSchools, ...fSports];
   }, [profile]);
 
+  const resetFilters = () => {
+    setSelectedType('All');
+    setSelectedCategory('All');
+    setSelectedCondition('All');
+    setSelectedSize('All');
+    setSelectedSportType('All');
+    setSelectedSortBy('Newest');
+    setSearchQuery('');
+    setLocationQuery('');
+    setSelectedLocation('');
+    setSelectedDistance('40');
+    setAnyDistance(false);
+  };
+
+  const hasActiveFilters =
+    selectedType !== 'All' ||
+    selectedCategory !== 'All' ||
+    selectedCondition !== 'All' ||
+    selectedSize !== 'All' ||
+    selectedSportType !== 'All' ||
+    selectedLocation.trim() ||
+    searchQuery.trim();
+  const noListingsAtAll = posts.length === 0 && !hasActiveFilters;
+
   return (
     <div className="h-screen bg-[#F0F2F5] flex flex-col overflow-hidden">
       <Navbar />
@@ -272,7 +299,7 @@ export default function FeedPage() {
              </div>
              <div className="space-y-1">
                 <button 
-                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
+                  onClick={resetFilters}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     selectedCategory === 'All' && selectedType === 'All' && selectedCondition === 'All' ? 'bg-[#F0F2F5]' : 'hover:bg-slate-50'
                   }`}
@@ -748,15 +775,14 @@ export default function FeedPage() {
               </header>
 
               {error ? (
-                <div className="bg-red-50 text-red-600 p-8 rounded-xl font-medium text-center border border-red-100 flex flex-col items-center gap-2">
-                  <ShieldCheck className="w-8 h-8 mx-auto opacity-50" />
-                  <p>Oops! Something went wrong.</p>
-                  <p className="text-sm opacity-80">{error}</p>
-                </div>
+                <ErrorState
+                  heading="Couldn't load listings"
+                  body="Check your connection and try again."
+                  onRetry={() => fetchPosts(false)}
+                />
               ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-32 gap-4">
-                  <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Gathering Gear...</p>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <ListingGridSkeleton count={10} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-6">
@@ -768,18 +794,23 @@ export default function FeedPage() {
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-full py-32 text-center">
-                        <div className="max-w-xs mx-auto space-y-2">
-                          <SearchIcon className="w-12 h-12 text-slate-200 mx-auto" />
-                          <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
-                          <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
-                          <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
-                            className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
-                          >
-                            Show all listings
-                          </button>
-                        </div>
+                      <div className="col-span-full">
+                        <EmptyState
+                          icon="□"
+                          heading={noListingsAtAll ? "No listings yet" : searchQuery.trim() ? `No results for "${searchQuery.trim()}"` : "No matches"}
+                          body={
+                            noListingsAtAll
+                              ? "Be the first to list a uniform — it takes about a minute."
+                              : searchQuery.trim()
+                                ? "Check spelling or try a broader term."
+                                : "Try widening your distance, removing a filter, or searching another school."
+                          }
+                          action={
+                            noListingsAtAll
+                              ? { label: "Create a listing", href: "/create" }
+                              : { label: "Clear filters", onClick: resetFilters }
+                          }
+                        />
                       </div>
                     )}
                   </AnimatePresence>

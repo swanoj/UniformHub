@@ -33,7 +33,7 @@ export default function AdminTable<T extends { id?: string }>({ data, columns }:
             {data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-8 text-center text-sm text-slate-500">
-                  No records found.
+                  Nothing here.
                 </td>
               </tr>
             ) : (

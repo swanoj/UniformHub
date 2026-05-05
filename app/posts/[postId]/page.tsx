@@ -12,6 +12,8 @@ import { MessageCircle, MapPin, Flag, ShieldAlert, ChevronLeft, ChevronRight, Zo
 import { formatDistanceToNow } from 'date-fns';
 import { formatDistanceLabel } from '@/lib/distance';
 import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
+import { ErrorState } from '@/components/ErrorState';
+import { ListingDetailSkeleton } from '@/components/Skeleton';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -20,6 +22,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<any>(null);
   const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [buying, setBuying] = useState(false);
   const [creatingChat, setCreatingChat] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -73,23 +76,31 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     async function fetchPost() {
-      const docRef = doc(db, 'posts', postId as string);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const postData = docSnap.data();
-        setPost({ id: docSnap.id, ...postData });
-        
-        if (postData.ownerId) {
-          const sellerRef = doc(db, 'users', postData.ownerId);
-          const sellerSnap = await getDoc(sellerRef);
-          if (sellerSnap.exists()) {
-            setSellerProfile(sellerSnap.data());
+      setLoading(true);
+      setLoadError('');
+      try {
+        const docRef = doc(db, 'posts', postId as string);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const postData = docSnap.data();
+          setPost({ id: docSnap.id, ...postData });
+
+          if (postData.ownerId) {
+            const sellerRef = doc(db, 'users', postData.ownerId);
+            const sellerSnap = await getDoc(sellerRef);
+            if (sellerSnap.exists()) {
+              setSellerProfile(sellerSnap.data());
+            }
           }
+        } else {
+          router.push('/not-found');
         }
-      } else {
-        router.push('/');
+      } catch (error) {
+        console.error(error);
+        setLoadError("Couldn't load this listing. Check your connection and try again.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchPost();
   }, [postId, router]);
@@ -290,9 +301,13 @@ export default function PostDetailPage() {
     }
   };
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-white">
-      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full shadow-lg shadow-indigo-500/20" />
+  if (loading) return <ListingDetailSkeleton />;
+  if (loadError) return (
+    <div className="min-h-screen bg-slate-50 p-6">
+      <Navbar />
+      <div className="mx-auto mt-16 max-w-xl">
+        <ErrorState heading="Couldn't load listing" body={loadError} onRetry={() => window.location.reload()} />
+      </div>
     </div>
   );
   if (!post) return null;

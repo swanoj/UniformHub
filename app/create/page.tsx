@@ -45,6 +45,8 @@ export default function CreatePostPage() {
   const { user, profile } = useUser();
   const [loading, setLoading] = useState(false);
   const [publishError, setPublishError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [aiLoading, setAiLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -74,6 +76,14 @@ export default function CreatePostPage() {
 
   const handleAddField = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (publishError) setPublishError('');
+    if (validationErrors.length) setValidationErrors([]);
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[e.target.name];
+        return next;
+      });
+    }
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -234,10 +244,34 @@ export default function CreatePostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPublishError('');
+    setValidationErrors([]);
 
     if (!user) {
       setPublishError('Please sign in before publishing a listing.');
       router.push('/login');
+      return;
+    }
+
+    const nextFieldErrors: Record<string, string> = {};
+    const nextValidationErrors: string[] = [];
+    const addValidationError = (field: string, message: string) => {
+      nextFieldErrors[field] = message;
+      nextValidationErrors.push(message);
+    };
+
+    if (!form.title) addValidationError('title', 'Select an item name.');
+    if (!form.size) addValidationError('size', 'Select a size.');
+    if (!form.condition) addValidationError('condition', 'Select a condition.');
+    if (!form.suburb.trim()) addValidationError('suburb', 'Enter the seller suburb.');
+    if (form.listingAudience === 'school' && !form.school.trim()) addValidationError('school', 'Select or enter a school.');
+    if (form.listingAudience === 'sport' && !form.sportType) addValidationError('sportType', 'Select a sport type.');
+    if (form.listingAudience === 'sport' && !form.clubName.trim()) addValidationError('clubName', 'Enter the club name.');
+    if (form.type !== 'FREE' && !form.price) addValidationError('price', 'Enter a price.');
+    if (imageFiles.length === 0) addValidationError('photos', 'Add at least one photo.');
+
+    if (nextValidationErrors.length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setValidationErrors(nextValidationErrors);
       return;
     }
 
@@ -742,6 +776,16 @@ export default function CreatePostPage() {
             </div>
 
             <div className="pt-4 border-t border-slate-40 space-y-4">
+               {validationErrors.length > 0 && (
+                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                   <p className="font-bold">Please fix the following:</p>
+                   <ul className="mt-2 list-disc space-y-1 pl-5">
+                     {validationErrors.map((message) => (
+                       <li key={message}>{message}</li>
+                     ))}
+                   </ul>
+                 </div>
+               )}
                {publishError && (
                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
                    {publishError}
@@ -752,7 +796,12 @@ export default function CreatePostPage() {
                   disabled={loading}
                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
                 >
-                  {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin w-5 h-5" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
                     <>
                       <Package className="w-5 h-5" />
                       <span>Publish Listing</span>

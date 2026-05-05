@@ -11,6 +11,10 @@ import Image from 'next/image';
 import { PostCard } from '@/components/PostCard';
 import { SPORT_TYPES } from '@/lib/constants';
 import { useSchools } from '@/hooks/useSchools';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ListingGridSkeleton } from '@/components/Skeleton';
+import { getCoordinates } from '@/lib/suburbs';
 import Link from 'next/link';
 
 const toStringArray = (value: unknown): string[] => {
@@ -21,6 +25,7 @@ const toStringArray = (value: unknown): string[] => {
 
 export default function ProfilePage() {
   const { user, profile } = useUser();
+  const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [suburb, setSuburb] = useState(profile?.suburb || '');
   const [homeSuburb, setHomeSuburb] = useState(profile?.homeSuburb || '');
   const [homePostcode, setHomePostcode] = useState(profile?.homePostcode || '');
@@ -33,6 +38,8 @@ export default function ProfilePage() {
   const [updating, setUpdating] = useState(false);
   const [myPosts, setMyPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [postsError, setPostsError] = useState('');
+  const [profileError, setProfileError] = useState('');
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [postToMarkSold, setPostToMarkSold] = useState<any | null>(null);
   const [soldQty, setSoldQty] = useState(1);
@@ -51,11 +58,20 @@ export default function ProfilePage() {
     const postsRef = collection(db, 'posts');
     const q = query(postsRef, where('ownerId', '==', user.uid));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMyPosts(posts);
-      setLoadingPosts(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMyPosts(posts);
+        setPostsError('');
+        setLoadingPosts(false);
+      },
+      (error) => {
+        console.error(error);
+        setPostsError("Couldn't load your listings. Check your connection and try again.");
+        setLoadingPosts(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user]);
@@ -63,17 +79,32 @@ export default function ProfilePage() {
   const handleUpdateProfile = async () => {
     if (!user) return;
     const normalizedHomePostcode = homePostcode.trim();
+    const normalizedDisplayName = displayName.trim();
+    const normalizedHomeSuburb = homeSuburb.trim();
+
+    setProfileError('');
+
+    if (!normalizedDisplayName || normalizedDisplayName.length > 50) {
+      setProfileError('Display name is required and must be 50 characters or fewer.');
+      return;
+    }
 
     if (normalizedHomePostcode && !/^\d{4}$/.test(normalizedHomePostcode)) {
-      alert('Home postcode must be 4 digits.');
+      setProfileError('Home postcode must be 4 digits.');
+      return;
+    }
+
+    if (normalizedHomeSuburb && normalizedHomePostcode && !getCoordinates(normalizedHomeSuburb, normalizedHomePostcode)) {
+      setProfileError('Suburb not recognised. Try a nearby suburb or check spelling.');
       return;
     }
 
     setUpdating(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
+        displayName: normalizedDisplayName,
         suburb,
-        homeSuburb: homeSuburb.trim(),
+        homeSuburb: normalizedHomeSuburb,
         homePostcode: normalizedHomePostcode,
         school,
         sportType,
@@ -83,9 +114,9 @@ export default function ProfilePage() {
         favClubs: favSports,
         updatedAt: new Date()
       });
-      alert('Profile updated!');
     } catch (error) {
       console.error(error);
+      setProfileError("Couldn't save profile. Try again.");
     } finally {
       setUpdating(false);
     }
@@ -190,6 +221,18 @@ export default function ProfilePage() {
 
             <div className="space-y-5 pt-6 border-t border-slate-100">
               <div className="space-y-2">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Display Name</label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={50}
+                  placeholder="Your name"
+                  className="w-full bg-slate-50 border-none rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium placeholder:text-slate-300"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Primary Suburb</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -236,6 +279,15 @@ export default function ProfilePage() {
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                   <h3 className="font-bold text-slate-800 text-sm">Favourites</h3>
                 </div>
+
+                {favSchools.length === 0 && favSports.length === 0 && (
+                  <EmptyState
+                    icon="□"
+                    heading="Save schools and sports you follow"
+                    body="Add favourites to get a personalised feed."
+                    className="px-4 py-6"
+                  />
+                )}
 
                 {/* Schools Favourites */}
                 <div className="space-y-3">
@@ -325,12 +377,22 @@ export default function ProfilePage() {
               </div>
 
               <div className="pt-6">
+                {profileError && (
+                  <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                    {profileError}
+                  </p>
+                )}
                 <button
                   onClick={handleUpdateProfile}
                   disabled={updating}
                   className="w-full py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all text-xs font-black uppercase tracking-widest"
                 >
-                  {updating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save All Changes"}
+                  {updating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : "Save All Changes"}
                 </button>
               </div>
 
@@ -366,9 +428,11 @@ export default function ProfilePage() {
           </header>
 
           {loadingPosts ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ListingGridSkeleton count={4} />
             </div>
+          ) : postsError ? (
+            <ErrorState heading="Couldn't load listings" body={postsError} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <AnimatePresence mode="popLayout">
@@ -437,10 +501,13 @@ export default function ProfilePage() {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="col-span-full py-24 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100">
-                    <Package className="w-12 h-12 text-slate-100 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">Empty Portfolio</h3>
-                    <p className="text-slate-400 text-xs italic">Help the community by listing your old gear today.</p>
+                  <div className="col-span-full">
+                    <EmptyState
+                      icon="□"
+                      heading="You haven't listed anything yet"
+                      body="Sell your old uniforms in under a minute."
+                      action={{ label: "Create your first listing", href: "/create" }}
+                    />
                   </div>
                 )}
               </AnimatePresence>
