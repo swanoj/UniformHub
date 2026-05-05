@@ -10,6 +10,8 @@ import Image from 'next/image';
 import { motion } from 'motion/react';
 import { MessageCircle, MapPin, Flag, ShieldAlert, ChevronLeft, ChevronRight, ZoomIn, X, Calendar, User, Tag, ShoppingBag, Send, Share2, MoreHorizontal, Info, Loader2, Sparkles, ShieldCheck, Zap, Heart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceLabel } from '@/lib/distance';
+import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -37,6 +39,23 @@ export default function PostDetailPage() {
         : new Date(post.expiresAt);
     return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < new Date().getTime();
   })();
+  const distanceKm = React.useMemo(
+    () =>
+      post
+        ? getDistanceBetweenSuburbs(
+            {
+              suburb: profile?.homeSuburb,
+              postcode: profile?.homePostcode,
+            },
+            {
+              suburb: post.suburb,
+              postcode: post.postcode,
+            }
+          )
+        : null,
+    [profile?.homeSuburb, profile?.homePostcode, post]
+  );
+  const distanceLabel = distanceKm == null ? '' : formatDistanceLabel(distanceKm);
 
   const isFavorited = optimisticFavorited !== null 
     ? optimisticFavorited 
@@ -425,6 +444,12 @@ export default function PostDetailPage() {
                        {post.suburb && post.school && post.suburb !== post.school && (
                          <p className="mt-1 text-sm font-semibold text-slate-700">{post.suburb}</p>
                        )}
+                       {post.suburb && post.postcode && (
+                         <p className="mt-1 text-xs font-semibold text-slate-500">{post.suburb} {post.postcode}</p>
+                       )}
+                       {distanceLabel && (
+                         <p className="mt-1 text-xs font-semibold text-slate-500">{distanceLabel}</p>
+                       )}
                     </div>
                     <div>
                        <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Category</p>
@@ -562,29 +587,21 @@ export default function PostDetailPage() {
                     <h3 className="text-lg font-bold text-slate-900">Location</h3>
                     <span className="text-slate-500 text-sm font-medium">{post.school || post.suburb || 'Melbourne, VIC'}</span>
                  </div>
-                 <div className="relative aspect-[16/6] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
-                    {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                      <iframe
-                        title="location-map"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        allowFullScreen
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}&zoom=14`}
-                      />
-                    ) : (
-                      <iframe
-                        title="location-map-fallback"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps?q=${encodeURIComponent((post.school || post.suburb || 'Melbourne VIC') + ', Australia')}&z=14&output=embed`}
-                      />
-                    )}
+                 <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{post.school || post.suburb || 'Location available'}</p>
+                        {post.suburb && (
+                          <p className="text-sm font-semibold text-slate-600">
+                            {post.suburb}{post.postcode ? ` ${post.postcode}` : ''}
+                          </p>
+                        )}
+                        {distanceLabel && (
+                          <p className="text-sm font-semibold text-slate-500">{distanceLabel}</p>
+                        )}
+                      </div>
+                    </div>
                  </div>
               </div>
 

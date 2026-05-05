@@ -66,6 +66,7 @@ export default function CreatePostPage() {
     listingAudience: 'school',
     school: searchParams.get('school') || '',
     suburb: profile?.suburb || '',
+    postcode: profile?.homePostcode || '',
     sportType: '',
     clubName: '',
     sourcePostId: searchParams.get('sourcePostId') || '',
@@ -215,6 +216,7 @@ export default function CreatePostPage() {
         school: '',
         listingAudience: 'school',
         suburb: profile?.suburb || '',
+        postcode: profile?.homePostcode || '',
         sportType: '',
         clubName: '',
         sourcePostId: '',
@@ -254,6 +256,11 @@ export default function CreatePostPage() {
 
       if (form.type !== 'FREE' && form.originalPrice && Number(form.originalPrice) < 0) {
         setPublishError('Original price cannot be negative.');
+        return;
+      }
+
+      if (form.postcode && !/^\d{4}$/.test(form.postcode.trim())) {
+        setPublishError('Postcode must be 4 digits.');
         return;
       }
 
@@ -321,11 +328,12 @@ export default function CreatePostPage() {
         originalPrice: form.type === 'FREE' ? '' : form.originalPrice,
         photoUrls: finalPhotoUrls, 
         status: newStatus,
-        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.sportType} ${form.clubName} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
+        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.postcode} ${form.sportType} ${form.clubName} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
 
         suburb: form.suburb || profile?.suburb || '',
+        postcode: form.postcode.trim(),
         sourcePostId: form.sourcePostId || null,
         expiresAt: addWeeks(new Date(), 8),
       };
@@ -354,6 +362,7 @@ export default function CreatePostPage() {
     photoUrls: previewUrls,
     ownerName: profile?.displayName || 'You',
     suburb: form.suburb || profile?.suburb || 'Local',
+    postcode: form.postcode,
     createdAt: { toDate: () => new Date() }
   };
 
@@ -624,15 +633,32 @@ export default function CreatePostPage() {
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700">Suburb</label>
-                    <input
-                      name="suburb"
-                      value={form.suburb}
-                      onChange={handleAddField}
-                      placeholder="e.g. Richmond"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Suburb</label>
+                      <input
+                        name="suburb"
+                        value={form.suburb}
+                        onChange={handleAddField}
+                        placeholder="e.g. Richmond"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Postcode</label>
+                      <input
+                        name="postcode"
+                        value={form.postcode}
+                        inputMode="numeric"
+                        maxLength={4}
+                        onChange={(e) => {
+                          setPublishError('');
+                          setForm((prev) => ({ ...prev, postcode: e.target.value.replace(/\D/g, '').slice(0, 4) }));
+                        }}
+                        placeholder="3121"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                      />
+                    </div>
                   </div>
 
                   {form.listingAudience === 'sport' && (

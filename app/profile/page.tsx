@@ -22,6 +22,8 @@ const toStringArray = (value: unknown): string[] => {
 export default function ProfilePage() {
   const { user, profile } = useUser();
   const [suburb, setSuburb] = useState(profile?.suburb || '');
+  const [homeSuburb, setHomeSuburb] = useState(profile?.homeSuburb || '');
+  const [homePostcode, setHomePostcode] = useState(profile?.homePostcode || '');
   const [school, setSchool] = useState(profile?.school || '');
   const [sportType, setSportType] = useState(profile?.sportType || '');
   const [clubName, setClubName] = useState(profile?.clubName || '');
@@ -60,10 +62,19 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async () => {
     if (!user) return;
+    const normalizedHomePostcode = homePostcode.trim();
+
+    if (normalizedHomePostcode && !/^\d{4}$/.test(normalizedHomePostcode)) {
+      alert('Home postcode must be 4 digits.');
+      return;
+    }
+
     setUpdating(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         suburb,
+        homeSuburb: homeSuburb.trim(),
+        homePostcode: normalizedHomePostcode,
         school,
         sportType,
         clubName,
@@ -188,6 +199,34 @@ export default function ProfilePage() {
                     onChange={(e) => setSuburb(e.target.value)}
                     placeholder="e.g. Richmond, VIC"
                     className="w-full bg-slate-50 border-none rounded-lg pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Home Suburb</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={homeSuburb}
+                      onChange={(e) => setHomeSuburb(e.target.value)}
+                      placeholder="e.g. St Kilda"
+                      className="w-full bg-slate-50 border-none rounded-lg pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Postcode</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={homePostcode}
+                    onChange={(e) => setHomePostcode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="3182"
+                    className="w-full bg-slate-50 border-none rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium placeholder:text-slate-300"
                   />
                 </div>
               </div>

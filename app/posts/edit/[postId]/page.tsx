@@ -44,6 +44,7 @@ export default function EditPostPage() {
     originalPrice: '',
     school: '',
     suburb: '',
+    postcode: '',
   });
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function EditPostPage() {
             originalPrice: data.originalPrice ? String(data.originalPrice) : '',
             school: data.school || '',
             suburb: data.suburb || '',
+            postcode: data.postcode || '',
           });
           setQuantity(data.quantity || 1);
           setExistingPhotos(data.photoUrls || []);
@@ -166,6 +168,11 @@ export default function EditPostPage() {
       return;
     }
 
+    if (form.postcode && !/^\d{4}$/.test(form.postcode.trim())) {
+      alert('Postcode must be 4 digits.');
+      return;
+    }
+
     setLoading(true);
     try {
       let finalPhotoUrls: string[] = [...existingPhotos];
@@ -193,10 +200,11 @@ export default function EditPostPage() {
         condition: form.condition,
         school: form.school || profile?.school || '',
         suburb: form.suburb || profile?.suburb || '',
+        postcode: form.postcode.trim(),
         price: form.type === 'FREE' ? '' : form.price,
         originalPrice: form.type === 'FREE' ? '' : form.originalPrice,
         photoUrls: finalPhotoUrls, 
-        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
+        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.postcode} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
         updatedAt: serverTimestamp(),
       });
       
@@ -219,6 +227,7 @@ export default function EditPostPage() {
     photoUrls: [...existingPhotos, ...previewUrls],
     ownerName: profile?.displayName || 'You',
     suburb: form.suburb || profile?.suburb || 'Local',
+    postcode: form.postcode,
     createdAt: { toDate: () => new Date() },
     status: 'ACTIVE'
   };
@@ -402,14 +411,28 @@ export default function EditPostPage() {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700">Suburb</label>
-                    <input
-                      name="suburb"
-                      value={form.suburb}
-                      onChange={handleAddField}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Suburb</label>
+                      <input
+                        name="suburb"
+                        value={form.suburb}
+                        onChange={handleAddField}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">Postcode</label>
+                      <input
+                        name="postcode"
+                        value={form.postcode}
+                        inputMode="numeric"
+                        maxLength={4}
+                        onChange={(e) => setForm((prev) => ({ ...prev, postcode: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                        placeholder="3121"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">

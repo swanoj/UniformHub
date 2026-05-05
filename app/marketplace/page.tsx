@@ -6,6 +6,8 @@ import { Navbar } from '@/components/Navbar';
 import { PostCard } from '@/components/PostCard';
 import { useFeed } from '@/hooks/useFeed';
 import { CONDITION_OPTIONS } from '@/lib/constants';
+import { useUser } from '@/components/FirebaseProvider';
+import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -24,6 +26,7 @@ const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', ...CONDITION_OPTIONS];
 
 function MarketplaceContent() {
+  const { profile } = useUser();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   
@@ -37,6 +40,7 @@ function MarketplaceContent() {
   const deferredQuery = useDeferredValue(queryDraft);
   const debouncedQuery = deferredQuery.trim();
   const isSearching = queryDraft !== deferredQuery;
+  const hasHomeLocation = Boolean(profile?.homeSuburb?.trim() && /^\d{4}$/.test(String(profile?.homePostcode || '').trim()));
 
   const filters = useMemo(() => ({
     category: selectedCategory,
@@ -52,9 +56,21 @@ function MarketplaceContent() {
       result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
     } else if (sortBy === 'price-high') {
       result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    } else if (sortBy === 'closest' && hasHomeLocation) {
+      result.sort((a, b) => {
+        const distanceA = getDistanceBetweenSuburbs(
+          { suburb: profile?.homeSuburb, postcode: profile?.homePostcode },
+          { suburb: a.suburb, postcode: a.postcode }
+        );
+        const distanceB = getDistanceBetweenSuburbs(
+          { suburb: profile?.homeSuburb, postcode: profile?.homePostcode },
+          { suburb: b.suburb, postcode: b.postcode }
+        );
+        return (distanceA ?? Number.MAX_SAFE_INTEGER) - (distanceB ?? Number.MAX_SAFE_INTEGER);
+      });
     }
     return result;
-  }, [posts, sortBy]);
+  }, [posts, sortBy, hasHomeLocation, profile?.homeSuburb, profile?.homePostcode]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -153,6 +169,7 @@ function MarketplaceContent() {
                          className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-10 pr-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
                        >
                          <option value="newest">Newest First</option>
+                         {hasHomeLocation && <option value="closest">Closest First</option>}
                          <option value="price-low">Price: Low to High</option>
                          <option value="price-high">Price: High to Low</option>
                        </select>
@@ -174,7 +191,9 @@ function MarketplaceContent() {
           </div>
           <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">
              <MapPin className="w-4 h-4" />
-             <span className="text-xs font-black uppercase tracking-wider">Richmond · 40KM</span>
+             <span className="text-xs font-black uppercase tracking-wider">
+               {hasHomeLocation ? `${profile?.homeSuburb} · Distance ready` : 'Set home suburb for distance'}
+             </span>
           </div>
         </div>
 

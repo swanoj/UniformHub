@@ -6,6 +6,9 @@ import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { MapPin, Tag, ShieldCheck, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useUser } from '@/components/FirebaseProvider';
+import { formatDistanceLabel } from '@/lib/distance';
+import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
 
 interface PostCardProps {
   post: any;
@@ -13,6 +16,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, id }: PostCardProps) {
+  const { profile } = useUser();
   const [imgError, setImgError] = React.useState(false);
   const thumbnail = !imgError && post.photoUrls?.[0] ? post.photoUrls[0] : (post.photoUrls?.[0] || `https://picsum.photos/seed/${id}/600/600`);
   // Or better, just show a fallback placeholder.
@@ -21,6 +25,21 @@ export function PostCard({ post, id }: PostCardProps) {
   const createdAt = post.createdAt?.toDate ? post.createdAt.toDate() : new Date();
 
   const timeAgo = formatDistanceToNow(createdAt, { addSuffix: true }).replace('about ', '');
+  const distanceKm = React.useMemo(
+    () =>
+      getDistanceBetweenSuburbs(
+        {
+          suburb: profile?.homeSuburb,
+          postcode: profile?.homePostcode,
+        },
+        {
+          suburb: post.suburb,
+          postcode: post.postcode,
+        }
+      ),
+    [profile?.homeSuburb, profile?.homePostcode, post.suburb, post.postcode]
+  );
+  const distanceLabel = distanceKm == null ? '' : formatDistanceLabel(distanceKm);
 
   return (
     <motion.div
@@ -76,6 +95,11 @@ export function PostCard({ post, id }: PostCardProps) {
             </span>
           )}
         </div>
+        {distanceLabel && (
+          <p className="text-[12px] text-[#65676B] font-normal mt-0.5">
+            {distanceLabel}
+          </p>
+        )}
         <p className="text-[12px] text-[#65676B] font-normal flex items-center flex-wrap gap-1 mt-0.5">
           {post.suburb || 'Melbourne, VIC'}
           <span className="text-[10px]">&bull;</span>

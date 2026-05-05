@@ -32,9 +32,9 @@ import {
   Search,
   MessageCircle,
   Plus,
-  Database,
-  LocateFixed
+  Database
 } from 'lucide-react';
+import { getDistanceBetweenSuburbs } from '@/lib/suburbs';
 
 const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
@@ -140,10 +140,7 @@ export default function FeedPage() {
   const [locationQuery, setLocationQuery] = useState(profile?.suburb || '');
   const [selectedLocation, setSelectedLocation] = useState(profile?.suburb || '');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-  const [googleLocationSuggestions, setGoogleLocationSuggestions] = useState<string[]>([]);
   const [locationPanelOpen, setLocationPanelOpen] = useState(false);
-  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState('40');
   const [anyDistance, setAnyDistance] = useState(false);
   const [selectedSportType, setSelectedSportType] = useState('All');
@@ -157,7 +154,7 @@ export default function FeedPage() {
     size: selectedSize,
     school: 'All',
     sportType: selectedSportType,
-    sortBy: selectedSortBy
+    sortBy: selectedSortBy === 'Closest' ? 'Newest' : selectedSortBy
   }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSportType, selectedSortBy]);
 
   const effectiveSearchQuery = useMemo(
@@ -171,79 +168,64 @@ export default function FeedPage() {
     const fromProfile = [profile?.suburb, profile?.school].filter(Boolean) as string[];
     return Array.from(new Set([...fromProfile, ...fromPosts])).sort((a, b) => a.localeCompare(b));
   }, [posts, profile]);
-  const hasDistanceData = useMemo(
-    () => posts.some((post) => typeof post.distanceKm === 'number' && Number.isFinite(Number(post.distanceKm))),
-    [posts]
-  );
+  const hasHomeLocation = Boolean(profile?.homeSuburb?.trim() && /^\d{4}$/.test(String(profile?.homePostcode || '').trim()));
   const filteredLocationOptions = useMemo(() => {
     const q = locationQuery.trim().toLowerCase();
     if (!q) return locationOptions.slice(0, 8);
     return locationOptions.filter((loc) => loc.toLowerCase().includes(q)).slice(0, 8);
   }, [locationOptions, locationQuery]);
-  const mergedLocationOptions = useMemo(
-    () => Array.from(new Set([...googleLocationSuggestions, ...filteredLocationOptions])).slice(0, 10),
-    [googleLocationSuggestions, filteredLocationOptions]
-  );
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const q = locationQuery.trim();
-
-    if (!showLocationSuggestions || q.length < 2) {
-      const clearTimer = setTimeout(() => {
-        if (!cancelled) setGoogleLocationSuggestions([]);
-      }, 0);
-      return () => {
-        cancelled = true;
-        clearTimeout(clearTimer);
-      };
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({ q });
-        if (geoCoords) {
-          params.set('lat', String(geoCoords.lat));
-          params.set('lng', String(geoCoords.lng));
-        }
-        const res = await fetch(`/api/places/autocomplete?${params.toString()}`);
-        const data = await res.json();
-        if (cancelled) return;
-        setGoogleLocationSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
-      } catch {
-        if (!cancelled) setGoogleLocationSuggestions([]);
-      }
-    }, 220);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [locationQuery, showLocationSuggestions, geoCoords]);
+  const mergedLocationOptions = filteredLocationOptions.slice(0, 10);
 
   const filteredPosts = useMemo(() => {
     const normalizedLocation = selectedLocation.trim().toLowerCase();
     const distanceLimit = anyDistance ? null : Number(selectedDistance);
 
-    return posts.filter((post) => {
+    const result = posts.filter((post) => {
       const locationMatches =
         !normalizedLocation ||
         String(post.school || '').toLowerCase().includes(normalizedLocation) ||
         String(post.suburb || '').toLowerCase().includes(normalizedLocation);
 
+      const distanceKm = getDistanceBetweenSuburbs(
+        {
+          suburb: profile?.homeSuburb,
+          postcode: profile?.homePostcode,
+        },
+        {
+          suburb: post.suburb,
+          postcode: post.postcode,
+        }
+      );
       const distanceMatches =
-        !hasDistanceData ||
+        !hasHomeLocation ||
         distanceLimit == null ||
-        (typeof post.distanceKm === 'number' && Number(post.distanceKm) <= distanceLimit);
+        (distanceKm != null && distanceKm <= distanceLimit);
 
       return locationMatches && distanceMatches;
     });
-  }, [posts, selectedLocation, selectedDistance, hasDistanceData, anyDistance]);
+
+    if (selectedSortBy === 'Closest' && hasHomeLocation) {
+      return result.sort((a, b) => {
+        const distanceA = getDistanceBetweenSuburbs(
+          { suburb: profile?.homeSuburb, postcode: profile?.homePostcode },
+          { suburb: a.suburb, postcode: a.postcode }
+        );
+        const distanceB = getDistanceBetweenSuburbs(
+          { suburb: profile?.homeSuburb, postcode: profile?.homePostcode },
+          { suburb: b.suburb, postcode: b.postcode }
+        );
+        return (distanceA ?? Number.MAX_SAFE_INTEGER) - (distanceB ?? Number.MAX_SAFE_INTEGER);
+      });
+    }
+
+    return result;
+  }, [posts, selectedLocation, selectedDistance, hasHomeLocation, anyDistance, profile?.homeSuburb, profile?.homePostcode, selectedSortBy]);
 
   const activeLocationLabel = useMemo(() => {
-    const label = selectedLocation.trim() || locationQuery.trim() || profile?.suburb || 'Melbourne, VIC';
+    const homeLocation = [profile?.homeSuburb, profile?.homePostcode].filter(Boolean).join(' ');
+    const label = selectedLocation.trim() || locationQuery.trim() || homeLocation || 'Set home suburb';
     return label;
-  }, [selectedLocation, locationQuery, profile?.suburb]);
+  }, [selectedLocation, locationQuery, profile?.homeSuburb, profile?.homePostcode]);
 
   const applyLocationSearch = () => {
     const typed = locationQuery.trim();
@@ -255,33 +237,6 @@ export default function FeedPage() {
     }
     setShowLocationSuggestions(false);
     setLocationPanelOpen(false);
-  };
-
-  const useCurrentLocation = async () => {
-    if (!navigator.geolocation) return;
-    setResolvingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setGeoCoords({ lat, lng });
-        try {
-          const res = await fetch(`/api/places/reverse?lat=${lat}&lng=${lng}`);
-          const data = await res.json();
-          const suburb = String(data?.suburb || '').trim();
-          if (suburb) {
-            setLocationQuery(suburb);
-            setSelectedLocation(suburb);
-          }
-        } finally {
-          setResolvingLocation(false);
-        }
-      },
-      () => {
-        setResolvingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const favorites = useMemo(() => {
@@ -378,6 +333,7 @@ export default function FeedPage() {
                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
                    >
                      <option value="Newest">Newest First</option>
+                     {hasHomeLocation && <option value="Closest">Closest First</option>}
                      <option value="PriceLowToHigh">Price: Low to High</option>
                      <option value="PriceHighToLow">Price: High to Low</option>
                    </select>
@@ -394,39 +350,43 @@ export default function FeedPage() {
                    />
                 </div>
 
-                {/* Distance */}
                 <div className="space-y-1.5">
                    <div className="flex items-center justify-between">
                      <label className="text-sm font-bold text-slate-700">Distance</label>
                      <span className="text-xs font-semibold text-slate-500">{anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
                    </div>
-                   <input
-                     type="range"
-                     min="5"
-                     max="100"
-                     step="5"
-                     value={selectedDistance}
-                     onChange={(e) => {
-                       setSelectedDistance(e.target.value);
-                       setAnyDistance(false);
-                     }}
-                     className="w-full accent-indigo-600"
-                   />
-                   <div className="flex items-center justify-between text-[11px] text-slate-500">
-                     <span>5km</span>
-                     <span>100km</span>
-                   </div>
-                  <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
-                    <input
-                      type="checkbox"
-                      checked={anyDistance}
-                      onChange={(e) => setAnyDistance(e.target.checked)}
-                      className="rounded border-slate-300"
-                    />
-                    Any distance
-                  </label>
-                   {!hasDistanceData && (
-                     <p className="text-[11px] text-slate-500">Distance filter activates when listings have distance data.</p>
+                   {hasHomeLocation ? (
+                     <>
+                       <input
+                         type="range"
+                         min="5"
+                         max="100"
+                         step="5"
+                         value={selectedDistance}
+                         onChange={(e) => {
+                           setSelectedDistance(e.target.value);
+                           setAnyDistance(false);
+                         }}
+                         className="w-full accent-indigo-600"
+                       />
+                       <div className="flex items-center justify-between text-[11px] text-slate-500">
+                         <span>5km</span>
+                         <span>100km</span>
+                       </div>
+                       <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+                         <input
+                           type="checkbox"
+                           checked={anyDistance}
+                           onChange={(e) => setAnyDistance(e.target.checked)}
+                           className="rounded border-slate-300"
+                         />
+                         Any distance
+                       </label>
+                     </>
+                   ) : (
+                     <p className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-500">
+                       Set your home suburb to filter by distance.
+                     </p>
                    )}
                 </div>
 
@@ -667,47 +627,44 @@ export default function FeedPage() {
                       </div>
                     )}
                   </div>
-                  <div className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-2">
-                      <span>Range</span>
-                      <span>{anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="5"
-                      max="100"
-                      step="5"
-                      value={selectedDistance}
-                      onChange={(e) => {
-                        setSelectedDistance(e.target.value);
-                        setAnyDistance(false);
-                      }}
-                      className="w-full accent-indigo-600"
-                    />
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>5km</span>
-                      <span>100km</span>
-                    </div>
-                    <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                  {hasHomeLocation ? (
+                    <div className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5">
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-2">
+                        <span>Range</span>
+                        <span>{anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
+                      </div>
                       <input
-                        type="checkbox"
-                        checked={anyDistance}
-                        onChange={(e) => setAnyDistance(e.target.checked)}
-                        className="rounded border-slate-300"
+                        type="range"
+                        min="5"
+                        max="100"
+                        step="5"
+                        value={selectedDistance}
+                        onChange={(e) => {
+                          setSelectedDistance(e.target.value);
+                          setAnyDistance(false);
+                        }}
+                        className="w-full accent-indigo-600"
                       />
-                      Any distance
-                    </label>
-                  </div>
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>5km</span>
+                        <span>100km</span>
+                      </div>
+                      <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={anyDistance}
+                          onChange={(e) => setAnyDistance(e.target.checked)}
+                          className="rounded border-slate-300"
+                        />
+                        Any distance
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl bg-slate-100 border border-slate-200 px-3 py-2.5 text-xs text-slate-600">
+                      Set your home suburb to filter by distance.
+                    </p>
+                  )}
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={useCurrentLocation}
-                      disabled={resolvingLocation}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60"
-                    >
-                      <LocateFixed className="w-4 h-4" />
-                      {resolvingLocation ? 'Locating...' : 'Use current location'}
-                    </button>
                     <button
                       type="button"
                       onClick={applyLocationSearch}
