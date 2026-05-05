@@ -35,6 +35,8 @@ export const AUSTRALIAN_SCHOOLS = [
   "Xavier College"
 ];
 
+export const TERMS_VERSION = '2.0';
+
 export const SPORT_TYPES: Record<string, string[]> = {
   AFL: [],
   Basketball: [],

@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider, appleProvider } from '@/lib/firebase';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { getProviderRedirectResult, signInWithProvider, shouldUseRedirectAuth } from '@/lib/auth';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -13,16 +14,47 @@ export default function LoginPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
+  const [providerSubmitting, setProviderSubmitting] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    getProviderRedirectResult()
+      .then((result) => {
+        if (!cancelled && result?.user) {
+          router.push('/');
+        }
+      })
+      .catch((error: any) => {
+        console.error('Redirect authentication failed', error);
+        if (!cancelled) {
+          setAuthError(error?.message || 'Authentication failed. Please try again.');
+          setProviderSubmitting(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   const handleLogin = async (provider: any) => {
+    setAuthError('');
+    setProviderSubmitting(true);
     try {
-      await signInWithPopup(auth, provider);
-      router.push('/');
+      const result = await signInWithProvider(provider);
+      if (result?.user) {
+        router.push('/');
+      }
     } catch (error: any) {
       console.error("Authentication failed", error);
       if (error.code !== 'auth/closed-by-user') {
-        alert(`Authentication failed: ${error.message}`);
+        setAuthError(error?.message || 'Authentication failed. Please try again.');
+      }
+    } finally {
+      if (!shouldUseRedirectAuth()) {
+        setProviderSubmitting(false);
       }
     }
   };
@@ -95,7 +127,7 @@ export default function LoginPage() {
             {authError && <p className="text-xs text-rose-600 font-semibold">{authError}</p>}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || providerSubmitting}
               className="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold tracking-tight hover:bg-indigo-700 transition-all disabled:opacity-60"
             >
               {submitting ? 'Please wait...' : authMode === 'signin' ? 'Sign in with Email' : 'Create Account'}
@@ -117,7 +149,8 @@ export default function LoginPage() {
           {/* Apple Sign In - Mandatory for iOS Submission */}
           <button
             onClick={() => handleLogin(appleProvider)}
-            className="w-full bg-black text-white px-6 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-900 transition-all active:scale-[0.98] shadow-md"
+            disabled={submitting || providerSubmitting}
+            className="w-full bg-black text-white px-6 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-900 transition-all active:scale-[0.98] shadow-md disabled:opacity-60"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 384 512">
               <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
@@ -128,7 +161,8 @@ export default function LoginPage() {
           {/* Google Sign In */}
           <button
             onClick={() => handleLogin(googleProvider)}
-            className="w-full bg-white border-2 border-slate-100 text-slate-700 px-6 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
+            disabled={submitting || providerSubmitting}
+            className="w-full bg-white border-2 border-slate-100 text-slate-700 px-6 py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm disabled:opacity-60"
           >
             <svg className="w-5 h-5" viewBox="0 0 48 48">
               <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
@@ -142,7 +176,7 @@ export default function LoginPage() {
 
         <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
             <p className="text-[11px] text-slate-400 font-medium px-4 leading-relaxed">
-              By continuing, you agree to the <a href="/legal/terms" className="text-slate-600 underline">Terms of Service</a> and <a href="/legal/privacy" className="text-slate-600 underline">Privacy Policy</a>.
+              By continuing, you agree to the <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-slate-600 underline">Terms of Service</a> and <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-slate-600 underline">Privacy Policy</a>.
             </p>
         </div>
       </div>

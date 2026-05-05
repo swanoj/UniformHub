@@ -5,6 +5,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useSchools } from '@/hooks/useSchools';
+import { TERMS_VERSION } from '@/lib/constants';
 
 interface UserContextType {
   user: User | null;
@@ -22,6 +23,8 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState('');
   const [agreed18, setAgreed18] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [onboardingError, setOnboardingError] = useState('');
   const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
   const { schools: AUSTRALIAN_SCHOOLS, loading: schoolsLoading } = useSchools();
 
@@ -41,27 +44,41 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (!userDoc.exists()) {
-          const newProfile = {
-            displayName: user.displayName || 'Anonymous User',
-            email: user.email,
-            photoUrl: user.photoURL,
-            onboarded: false,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-          await setDoc(userRef, newProfile);
-        }
-
-        unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data());
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userRef);
+          
+          if (!userDoc.exists()) {
+            const newProfile = {
+              displayName: user.displayName || 'Anonymous User',
+              email: user.email,
+              photoUrl: user.photoURL,
+              onboarded: false,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            await setDoc(userRef, newProfile);
           }
+
+          unsubscribeProfile = onSnapshot(
+            userRef,
+            (docSnap) => {
+              if (docSnap.exists()) {
+                setProfile(docSnap.data());
+              }
+              setLoading(false);
+            },
+            (error) => {
+              console.error('Failed to subscribe to user profile:', error);
+              setProfile(null);
+              setLoading(false);
+            }
+          );
+        } catch (error) {
+          console.error('Failed to initialise user profile:', error);
+          setProfile(null);
           setLoading(false);
-        });
+        }
       } else {
         setProfile(null);
         setLoading(false);
@@ -80,19 +97,38 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
 
   if (user && profile && profile.onboarded === false) {
     const completeOnboarding = async () => {
-      if (!agreed18) return alert('Please confirm your age.');
-      if (!school.trim()) return alert('Please select your primary school from the list.');
-      if (!matchedSchool) return alert('Please choose a valid school from the suggestions list.');
+      setOnboardingError('');
+      if (!agreed18) {
+        setOnboardingError('Please confirm your age and accept the Terms and Conditions.');
+        return;
+      }
+      if (!school.trim()) {
+        setOnboardingError('Please select your primary school from the list.');
+        return;
+      }
+      if (!matchedSchool) {
+        setOnboardingError('Please choose a valid school from the suggestions list.');
+        return;
+      }
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        onboarded: true,
-        isOver18: true,
-        school: matchedSchool,
-        termsAccepted: {
-          version: '2.0',
-          acceptedAt: serverTimestamp()
-        }
-      });
+      setOnboardingLoading(true);
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          onboarded: true,
+          isOver18: true,
+          school: matchedSchool,
+          acceptedTermsVersion: TERMS_VERSION,
+          termsAccepted: {
+            version: TERMS_VERSION,
+            acceptedAt: serverTimestamp()
+          }
+        });
+      } catch (error: any) {
+        console.error('Failed to complete onboarding:', error);
+        setOnboardingError(error?.message || 'Something went wrong, please try again.');
+      } finally {
+        setOnboardingLoading(false);
+      }
     };
 
     return (
@@ -143,14 +179,24 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
            </div>
 
            <div className="flex items-start gap-3 mt-4">
-             <input type="checkbox" id="over18" checked={agreed18} onChange={e => setAgreed18(e.target.checked)} className="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+             <input
+               type="checkbox"
+               id="over18"
+               checked={agreed18}
+               onChange={(e) => setAgreed18(e.target.checked)}
+               className="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+             />
              <label htmlFor="over18" className="text-sm font-semibold text-slate-700 leading-snug cursor-pointer flex-1">
-               I confirm I am over 18 years old and agree to the <a href="/legal/terms" target="_blank" className="text-indigo-600 font-bold hover:underline">Terms and Conditions</a>, including the community guidelines.
+               I confirm I am over 18 years old and agree to the <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold hover:underline">Terms and Conditions</a>, including the community guidelines.
              </label>
            </div>
 
-           <button onClick={completeOnboarding} disabled={!agreed18 || !school.trim() || !matchedSchool} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
-             Complete Profile
+           {onboardingError && (
+             <p className="text-sm font-semibold text-rose-600">{onboardingError}</p>
+           )}
+
+           <button onClick={completeOnboarding} disabled={onboardingLoading || !agreed18 || !school.trim() || !matchedSchool} className="mt-4 w-full px-6 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-xl font-bold tracking-tight shadow-md transition-all active:scale-[0.98]">
+             {onboardingLoading ? 'Completing...' : 'Complete Profile'}
            </button>
          </div>
       </div>

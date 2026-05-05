@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useUser } from '@/components/FirebaseProvider';
-import { auth, db } from '@/lib/firebase';
+import { appleProvider, auth, db, googleProvider } from '@/lib/firebase';
+import { signInWithProvider } from '@/lib/auth';
 import { collection, query, orderBy, limit, onSnapshot, updateDoc, doc, where, getDocs, deleteDoc } from 'firebase/firestore';
-import { signOut, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { Search, PlusSquare, MessageSquare, User, LogOut, ShoppingBag, Database, Users, Bell, Check, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
@@ -53,18 +54,16 @@ export function Navbar() {
   };
 
   const handleLoginGoogle = async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithProvider(googleProvider);
     } catch (error) {
       console.error("Login failed", error);
     }
   };
 
   const handleLoginApple = async () => {
-    const provider = new OAuthProvider('apple.com');
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithProvider(appleProvider);
     } catch (error) {
       console.error("Login failed", error);
     }
