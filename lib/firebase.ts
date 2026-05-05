@@ -2,7 +2,7 @@
 
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, OAuthProvider, GoogleAuthProvider } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported, type Messaging } from 'firebase/messaging';
 import firebaseAppletConfig from '@/firebase-applet-config.json';
@@ -53,21 +53,4 @@ export async function getSupportedMessaging(): Promise<Messaging | null> {
     console.warn('[Firebase] Messaging unavailable in this context:', e instanceof Error ? e.message : e);
     return null;
   }
-}
-
-async function testConnection() {
-  console.log(`[Firebase] Testing connection to database: ${firestoreDatabaseId}...`);
-  try {
-    await getDocFromServer(doc(db, '_health_check_', 'ping'));
-    console.log('[Firebase] Connection successful.');
-  } catch (error: any) {
-    console.error('[Firebase] Connection test failed:', error.code, error.message);
-    if (error?.message?.includes('the client is offline') || error.code === 'unavailable') {
-      console.error('CRITICAL: Firestore is unreachable. This may be due to browser restrictions, proxy issues, or incorrect config.');
-    }
-  }
-}
-
-if (typeof window !== 'undefined') {
-  testConnection();
 }

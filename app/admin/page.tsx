@@ -18,11 +18,13 @@ import {
 } from 'firebase/firestore';
 import AdminTable from '@/components/AdminTable';
 import Link from 'next/link';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 type TabType = 'listings' | 'users' | 'reports' | 'threads';
 
 export default function AdminPage() {
   const { user } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('listings');
   const [loading, setLoading] = useState(true);
@@ -182,6 +184,10 @@ export default function AdminPage() {
       archivedBy: user?.uid
     });
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-slate-50" />;
+  }
 
   if (loading) {
     return (

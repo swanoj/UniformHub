@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Users, Shield, BookOpen, LogOut, Info, Settings, Database, User } from 'lucide-react';
+import { FEATURES } from '@/lib/constants';
 
 export default function MenuPage() {
   const { user, profile } = useUser();
@@ -19,10 +20,13 @@ export default function MenuPage() {
 
   const menuItems = [
     { icon: User, label: 'Profile', href: '/profile', description: 'Manage your profile and listings' },
-    { icon: Users, label: 'Communities', href: '/communities', description: 'Join and manage your groups' },
     { icon: BookOpen, label: 'Terms & Privacy', href: '/legal/terms', description: 'Read our policies' },
     { icon: Database, label: 'Seed DB', href: '/debug/seed', description: 'Add dummy data (Admin Only)' }
   ];
+
+  if (FEATURES.communities) {
+    menuItems.splice(1, 0, { icon: Users, label: 'Communities', href: '/communities', description: 'Join and manage your groups' });
+  }
 
   if (profile?.isAdmin) {
     menuItems.push({ icon: Shield, label: 'Admin Dashboard', href: '/admin', description: 'Manage platform' });
@@ -35,7 +39,7 @@ export default function MenuPage() {
       {!user && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-8">
           <h2 className="text-lg font-bold text-indigo-900 mb-2">Sign in for more features</h2>
-          <p className="text-sm text-indigo-700 font-medium mb-4">Join communities, save your favorite uniforms, and message sellers.</p>
+          <p className="text-sm text-indigo-700 font-medium mb-4">Save your favourite uniforms, manage listings, and message sellers.</p>
           <button 
             onClick={() => {
               const el = document.querySelector('nav button'); // Find login button in navbar if possible

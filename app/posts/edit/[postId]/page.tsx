@@ -13,6 +13,7 @@ import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package, Plus } from 'luci
 import { PostCard } from '@/components/PostCard';
 import Image from 'next/image';
 import { CONDITION_OPTIONS } from '@/lib/constants';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const ITEM_NAMES = ["Basketball shorts","Basketball singlet","Bathers","Belt","Bib","Blazer","Blouse","Books","Calculator","Camp / Venture / Outdoor Ed items","Fleece","Football (AFL) guernsey","Football (AFL) shorts","Football boots","Hockey shirt","Hockey shorts","Hockey skirt","House polo","Indoor court shoes","Jumper","Library bag","Netball dress","Other","Pencil case","Pinafore","Rain jacket","Rash vest","School bag","School shoes","Scarf","Shorts - Summer","Shorts - Winter","Soccer boots","Soccer jersey/shirt","Soccer shorts","Sport hat","Sport jacket","Sport polo","Sport shorts","Sport skort","Sport track pants","Sport visor","Sports bag","Straw hat","Summer dress","Swim cap","Tie","Trousers","Umbrella","Winter skirt"];
@@ -23,6 +24,7 @@ export default function EditPostPage() {
   const router = useRouter();
   const { postId } = useParams();
   const { user, profile } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -231,6 +233,10 @@ export default function EditPostPage() {
     createdAt: { toDate: () => new Date() },
     status: 'ACTIVE'
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#F0F2F5]" />;
+  }
 
   return (
     <div className="h-screen bg-[#F0F2F5] flex flex-col overflow-hidden">

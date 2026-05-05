@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { ListingGridSkeleton } from '@/components/Skeleton';
 import { getCoordinates } from '@/lib/suburbs';
 import Link from 'next/link';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
@@ -25,6 +26,7 @@ const toStringArray = (value: unknown): string[] => {
 
 export default function ProfilePage() {
   const { user, profile } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [suburb, setSuburb] = useState(profile?.suburb || '');
   const [homeSuburb, setHomeSuburb] = useState(profile?.homeSuburb || '');
@@ -189,6 +191,10 @@ export default function ProfilePage() {
     }
   };
 
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#F8FAFC]" />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <Navbar />
@@ -284,7 +290,7 @@ export default function ProfilePage() {
                   <EmptyState
                     icon="□"
                     heading="Save schools and sports you follow"
-                    body="Add favourites to get a personalised feed."
+                    body="Add favourites to get personalised listings."
                     className="px-4 py-6"
                   />
                 )}

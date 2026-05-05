@@ -7,7 +7,7 @@ import { Home, Search, PlusCircle, MessageSquare, User, Menu } from 'lucide-reac
 import { motion } from 'motion/react';
 
 const NAV_ITEMS = [
-  { icon: Home, label: 'Feed', href: '/' },
+  { icon: Home, label: 'Browse', href: '/' },
   { icon: Search, label: 'Explore', href: '/uniforms' },
   { icon: PlusCircle, label: 'Sell', href: '/create' },
   { icon: MessageSquare, label: 'Chats', href: '/inbox' },

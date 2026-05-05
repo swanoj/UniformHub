@@ -13,6 +13,7 @@ import { addWeeks } from 'date-fns';
 import { GoogleGenAI, Type } from "@google/genai";
 import { useSchools } from '@/hooks/useSchools';
 import { CONDITION_OPTIONS } from '@/lib/constants';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 import Image from 'next/image';
 
@@ -43,6 +44,7 @@ export default function CreatePostPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [loading, setLoading] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -399,6 +401,10 @@ export default function CreatePostPage() {
     postcode: form.postcode,
     createdAt: { toDate: () => new Date() }
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#F0F2F5]" />;
+  }
 
   return (
     <div className="h-screen bg-[#F0F2F5] flex flex-col overflow-hidden">

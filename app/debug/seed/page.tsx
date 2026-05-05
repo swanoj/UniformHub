@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Loader2, Plus, CheckCircle2, ChevronLeft, Database } from 'lucide-react';
 import router from 'next/router';
 import Link from 'next/link';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const DEMO_POSTS = [
   {
@@ -106,6 +107,7 @@ const DEMO_POSTS = [
 
 export default function SeedPage() {
   const { user, profile } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +143,10 @@ export default function SeedPage() {
       setLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#F8FAFC]" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

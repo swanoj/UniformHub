@@ -10,9 +10,11 @@ import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function NotificationsPage() {
   const { user } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<any[]>([]);
 
@@ -42,6 +44,10 @@ export default function NotificationsPage() {
       router.push(`/communities/${notif.referenceId}/settings`);
     }
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-slate-50" />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

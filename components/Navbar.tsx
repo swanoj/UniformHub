@@ -12,6 +12,7 @@ import { signOut } from 'firebase/auth';
 import { Search, PlusSquare, MessageSquare, User, LogOut, ShoppingBag, Database, Users, Bell, Check, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
+import { FEATURES } from '@/lib/constants';
 
 export function Navbar() {
   const { user } = useUser();
@@ -127,12 +128,16 @@ export function Navbar() {
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-1 ml-4 mr-auto">
-            <Link href="/" className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-all">Feed</Link>
+            {FEATURES.feed && (
+              <Link href="/" className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-all">Feed</Link>
+            )}
             <Link href="/uniforms" className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-all">Uniforms</Link>
-            <Link href="/communities" className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-all flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Communities
-            </Link>
+            {FEATURES.communities && (
+              <Link href="/communities" className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-all flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Communities
+              </Link>
+            )}
           </div>
 
           {/* Search bar - identical to FB marketplace expansion */}

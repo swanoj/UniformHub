@@ -13,9 +13,11 @@ import { useBlocks } from '@/hooks/useBlocks';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { ChatListSkeleton } from '@/components/Skeleton';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function InboxPage() {
   const { user } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [loading, setLoading] = useState(true);
   const [fetchedThreads, setFetchedThreads] = useState<any[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -72,6 +74,10 @@ export default function InboxPage() {
       alert('Failed to delete thread. Try again.');
     }
   };
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen bg-[#F8FAFC]" />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">

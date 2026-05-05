@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'UniformHub | Secondhand Uniforms',
-  description: 'The second-hand uniforms/clothes platform. Feed-first, pickup only.',
+  description: 'The second-hand uniforms marketplace. Browse locally and arrange pickup directly.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

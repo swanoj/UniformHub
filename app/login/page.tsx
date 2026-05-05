@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider, appleProvider } from '@/lib/firebase';
 import { getProviderRedirectResult, signInWithProvider, shouldUseRedirectAuth } from '@/lib/auth';
@@ -10,6 +10,7 @@ import { ArrowLeft, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, profile } = useUser();
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = React.useState('');
@@ -18,6 +19,10 @@ export default function LoginPage() {
   const [providerSubmitting, setProviderSubmitting] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
   const [showAuth, setShowAuth] = React.useState(false);
+  const redirectTarget = React.useMemo(() => {
+    const requested = searchParams.get('redirect') || '/';
+    return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
+  }, [searchParams]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -25,7 +30,7 @@ export default function LoginPage() {
     getProviderRedirectResult()
       .then((result) => {
         if (!cancelled && result?.user) {
-          router.push('/');
+          router.push(redirectTarget);
         }
       })
       .catch((error: any) => {
@@ -39,13 +44,13 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [redirectTarget, router]);
 
   React.useEffect(() => {
     if (!loading && user && profile?.onboarded !== false) {
-      router.replace('/');
+      router.replace(redirectTarget);
     }
-  }, [loading, profile, router, user]);
+  }, [loading, profile, redirectTarget, router, user]);
 
   const handleLogin = async (provider: any) => {
     setAuthError('');
@@ -53,7 +58,7 @@ export default function LoginPage() {
     try {
       const result = await signInWithProvider(provider);
       if (result?.user) {
-        router.push('/');
+        router.push(redirectTarget);
       }
     } catch (error: any) {
       console.error("Authentication failed", error);
@@ -89,7 +94,7 @@ export default function LoginPage() {
       } else {
         await createUserWithEmailAndPassword(auth, email.trim(), password);
       }
-      router.push('/');
+      router.push(redirectTarget);
     } catch (error: any) {
       setAuthError(error?.message || 'Authentication failed.');
     } finally {
@@ -114,7 +119,7 @@ export default function LoginPage() {
                 School uniforms, sorted.
               </h1>
               <p className="text-base font-medium leading-7 text-slate-600">
-                Buy and sell second-hand school uniforms with local families, clubs, and school communities.
+                Buy and sell second-hand school uniforms with local families, clubs, and school groups.
               </p>
             </div>
 

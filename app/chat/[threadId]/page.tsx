@@ -14,11 +14,13 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useBlocks } from '@/hooks/useBlocks';
 import { ErrorState } from '@/components/ErrorState';
 import { ChatThreadSkeleton } from '@/components/Skeleton';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function ChatPage() {
   const { threadId } = useParams();
   const router = useRouter();
   const { user, profile } = useUser();
+  const { isCheckingAuth } = useRequireAuth();
   const [thread, setThread] = useState<any>(null);
   const [fetchedThreads, setFetchedThreads] = useState<any[]>([]);
   const { blockedUserIds, loading: blocksLoading } = useBlocks(user?.uid);
@@ -183,6 +185,10 @@ export default function ChatPage() {
       setSending(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return <div className="h-screen bg-slate-50" />;
+  }
 
   if ((loading || blocksLoading) && !threads.length) return (
     <div className="h-screen bg-slate-50">

@@ -64,6 +64,10 @@ export default function PostDetailPage() {
     ? optimisticFavorited 
     : (profile && Array.isArray(profile.savedPosts) && typeof postId === 'string' && profile.savedPosts.includes(postId)) || false;
 
+  const redirectToLogin = () => {
+    router.push(`/login?redirect=${encodeURIComponent(`/posts/${postId}`)}`);
+  };
+
   const nextImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setActiveImageIndex((prev) => (prev + 1) % images.length);
@@ -106,7 +110,11 @@ export default function PostDetailPage() {
   }, [postId, router]);
 
   const handleToggleFavorite = async () => {
-    if (!user || !profile || isFavoriting) return;
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
+    if (!profile || isFavoriting) return;
     setIsFavoriting(true);
     try {
       const userRef = doc(db, 'users', user.uid);
@@ -165,7 +173,11 @@ export default function PostDetailPage() {
   };
 
   const handleMessageSeller = async () => {
-    if (!user || !post) return;
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
+    if (!post) return;
     setCreatingChat(true);
 
     try {
@@ -235,7 +247,11 @@ export default function PostDetailPage() {
   };
 
   const handleReport = async () => {
-    if (!user || !post) return;
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
+    if (!post) return;
     
     const reason = window.prompt('Please enter the reason for reporting this listing:', 'Inappropriate content/Spam');
     if (!reason || reason.trim() === '') return;
@@ -285,7 +301,11 @@ export default function PostDetailPage() {
   };
 
   const handleBlockUser = async () => {
-    if (!user || !post) return;
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
+    if (!post) return;
     if (true) {
       try {
         await addDoc(collection(db, 'blocks'), {
@@ -380,15 +400,13 @@ export default function PostDetailPage() {
            <div className="p-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex justify-between items-center">
               <h2 className="text-xl font-black text-slate-900 line-clamp-1">Listing Details</h2>
               <div className="flex gap-1">
-                {user && (
-                  <button 
-                    onClick={handleToggleFavorite}
-                    disabled={isFavoriting}
-                    className="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
-                  >
-                    <Heart className={`w-5 h-5 ${isFavorited ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
-                  </button>
-                )}
+                <button
+                  onClick={handleToggleFavorite}
+                  disabled={isFavoriting}
+                  className="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
+                >
+                  <Heart className={`w-5 h-5 ${isFavorited ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+                </button>
                 <button className="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors">
                   <Share2 className="w-5 h-5" />
                 </button>
@@ -500,7 +518,14 @@ export default function PostDetailPage() {
                    <>
                      {post.type === 'WTB' ? (
                        <button
-                         onClick={() => router.push(`/create?sourcePostId=${post.id}&title=${encodeURIComponent(post.title)}&school=${encodeURIComponent(post.school || '')}`)}
+                         onClick={() => {
+                           const target = `/create?sourcePostId=${post.id}&title=${encodeURIComponent(post.title)}&school=${encodeURIComponent(post.school || '')}`;
+                           if (!user) {
+                             router.push(`/login?redirect=${encodeURIComponent(target)}`);
+                           } else {
+                             router.push(target);
+                           }
+                         }}
                          className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[15px] flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
                        >
                          <Zap className="w-5 h-5 fill-white" />
@@ -551,7 +576,7 @@ export default function PostDetailPage() {
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
-                  <button className="bg-slate-50 text-slate-900 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-all border border-slate-100">Save</button>
+                  <button onClick={handleToggleFavorite} className="bg-slate-50 text-slate-900 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-all border border-slate-100">Save</button>
                   <button className="bg-slate-50 text-slate-900 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-all border border-slate-100">Share</button>
                 </div>
               </div>

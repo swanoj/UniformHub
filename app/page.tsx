@@ -552,7 +552,7 @@ export default function FeedPage() {
 
              {favorites.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-bold text-[17px] text-slate-900 px-1">My Communities</h3>
+                  <h3 className="font-bold text-[17px] text-slate-900 px-1">My favourites</h3>
                   <div className="flex flex-col gap-1">
                     {favorites.map(fav => (
                       <button
