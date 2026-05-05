@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useFeed } from '@/hooks/useFeed';
+import { CONDITION_OPTIONS, SPORT_TYPES } from '@/lib/constants';
 import { 
   Filter, 
   Search as SearchIcon, 
@@ -37,7 +38,13 @@ import {
 
 const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
-const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
+const CONDITIONS = ['All', ...CONDITION_OPTIONS];
+
+const toStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+};
 
 function SchoolHubSection({ userSchool, posts }: { userSchool: string, posts: any[] }) {
   const schoolPosts = posts.filter(p => p.school?.toLowerCase().includes(userSchool.toLowerCase())).slice(0, 4);
@@ -278,9 +285,9 @@ export default function FeedPage() {
   };
 
   const favorites = useMemo(() => {
-    const fSchools = profile?.favSchools || [];
-    const fClubs = profile?.favClubs || [];
-    return [...fSchools, ...fClubs];
+    const fSchools = toStringArray(profile?.favSchools);
+    const fSports = toStringArray(profile?.favSports || profile?.favClubs);
+    return [...fSchools, ...fSports];
   }, [profile]);
 
   return (
@@ -310,7 +317,7 @@ export default function FeedPage() {
              </div>
              <div className="space-y-1">
                 <button 
-                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
+                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     selectedCategory === 'All' && selectedType === 'All' && selectedCondition === 'All' ? 'bg-[#F0F2F5]' : 'hover:bg-slate-50'
                   }`}
@@ -389,20 +396,26 @@ export default function FeedPage() {
 
                 {/* Distance */}
                 <div className="space-y-1.5">
-                   <label className="text-sm font-bold text-slate-700">Distance</label>
-                   <select
+                   <div className="flex items-center justify-between">
+                     <label className="text-sm font-bold text-slate-700">Distance</label>
+                     <span className="text-xs font-semibold text-slate-500">{anyDistance ? 'Any distance' : `${selectedDistance} km`}</span>
+                   </div>
+                   <input
+                     type="range"
+                     min="5"
+                     max="100"
+                     step="5"
                      value={selectedDistance}
-                     onChange={(e) => setSelectedDistance(e.target.value)}
-                     disabled={!hasDistanceData}
-                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
-                   >
-                    <option value="10">Within 10 km</option>
-                    <option value="25">Within 25 km</option>
-                    <option value="40">Within 40 km</option>
-                    <option value="60">Within 60 km</option>
-                    <option value="80">Within 80 km</option>
-                    <option value="100">Within 100 km</option>
-                  </select>
+                     onChange={(e) => {
+                       setSelectedDistance(e.target.value);
+                       setAnyDistance(false);
+                     }}
+                     className="w-full accent-indigo-600"
+                   />
+                   <div className="flex items-center justify-between text-[11px] text-slate-500">
+                     <span>5km</span>
+                     <span>100km</span>
+                   </div>
                   <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
                     <input
                       type="checkbox"
@@ -425,15 +438,9 @@ export default function FeedPage() {
                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
                    >
                      <option value="All">Any Sport</option>
-                     <option value="AFL">AFL</option>
-                     <option value="Netball">Netball</option>
-                     <option value="Basketball">Basketball</option>
-                     <option value="Hockey">Hockey</option>
-                     <option value="Soccer">Soccer</option>
-                     <option value="Floorball">Floorball</option>
-                     <option value="Cricket">Cricket</option>
-                     <option value="Rugby">Rugby</option>
-                     <option value="Other">Other</option>
+                     {Object.keys(SPORT_TYPES).map((sport) => (
+                       <option key={sport} value={sport}>{sport}</option>
+                     ))}
                    </select>
                 </div>
 
@@ -461,12 +468,9 @@ export default function FeedPage() {
                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 appearance-none"
                    >
                      <option value="All">Any Condition</option>
-                     <option value="New - with tags">New - with tags</option>
-                     <option value="New - without tags">New - without tags</option>
-                     <option value="Excellent">Excellent</option>
-                     <option value="Good">Good</option>
-                     <option value="Fair">Fair</option>
-                     <option value="Worn">Worn</option>
+                     {CONDITION_OPTIONS.map((condition) => (
+                       <option key={condition} value={condition}>{condition}</option>
+                     ))}
                    </select>
                 </div>
                 
@@ -550,7 +554,7 @@ export default function FeedPage() {
                          <Sparkles className={`w-5 h-5 ${selectedCondition === cond ? 'text-white' : ''}`} />
                        </div>
                        <span className={`text-[15px] font-semibold text-left ${selectedCondition === cond ? 'text-slate-900' : 'text-slate-800'}`}>
-                         {cond === 'New' ? 'New with tags' : cond === 'All' ? 'Any Condition' : cond}
+                         {cond === 'All' ? 'Any Condition' : cond}
                        </span>
                      </button>
                    ))}

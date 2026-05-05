@@ -12,6 +12,7 @@ import { PostCard } from '@/components/PostCard';
 import { addWeeks } from 'date-fns';
 import { GoogleGenAI, Type } from "@google/genai";
 import { useSchools } from '@/hooks/useSchools';
+import { CONDITION_OPTIONS } from '@/lib/constants';
 
 import Image from 'next/image';
 
@@ -25,6 +26,18 @@ const ITEM_NAMES = ["Basketball shorts","Basketball singlet","Bathers","Belt","B
 const SIZES = ["4","6","8","10","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
 const getInitialListingType = (type: string | null): string => (type && TYPES.includes(type) ? type : 'SALE');
+const SCHOOL_QUERY_MIN_LENGTH = 2;
+
+const matchesSchoolQuery = (school: string, query: string) => {
+  const normalizedSchool = school.toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.length < SCHOOL_QUERY_MIN_LENGTH) return false;
+
+  return (
+    normalizedSchool.includes(normalizedQuery) ||
+    normalizedSchool.split(/\s+/).some((word) => word.startsWith(normalizedQuery))
+  );
+};
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -37,6 +50,7 @@ export default function CreatePostPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
   const { schools: AUSTRALIAN_SCHOOLS } = useSchools();
   const [form, setForm] = useState({
     title: searchParams.get('title') || '',
@@ -49,6 +63,7 @@ export default function CreatePostPage() {
     condition: 'Good',
     price: '',
     originalPrice: '',
+    listingAudience: 'school',
     school: searchParams.get('school') || '',
     suburb: profile?.suburb || '',
     sportType: '',
@@ -62,11 +77,19 @@ export default function CreatePostPage() {
   };
 
   const filteredSchools = AUSTRALIAN_SCHOOLS
-    .filter((s) =>
-      s.toLowerCase().includes(form.school.toLowerCase()) &&
-      s.toLowerCase() !== form.school.toLowerCase()
-    )
-    .slice(0, 5);
+    .filter((s) => matchesSchoolQuery(s, form.school) && s.toLowerCase() !== form.school.trim().toLowerCase())
+    .slice(0, 8);
+
+  const handleListingAudienceChange = (listingAudience: string) => {
+    setPublishError('');
+    setForm((prev) => ({
+      ...prev,
+      listingAudience,
+      school: listingAudience === 'school' ? prev.school : '',
+      sportType: listingAudience === 'sport' ? prev.sportType : '',
+      clubName: listingAudience === 'sport' ? prev.clubName : '',
+    }));
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPublishError('');
@@ -190,6 +213,7 @@ export default function CreatePostPage() {
         title: '',
         description: '',
         school: '',
+        listingAudience: 'school',
         suburb: profile?.suburb || '',
         sportType: '',
         clubName: '',
@@ -290,9 +314,9 @@ export default function CreatePostPage() {
         type: TYPES.includes(form.type) ? form.type : 'SALE',
         condition: form.condition,
         verifiedCondition: (form as any).verifiedCondition || '',
-        school: form.school || profile?.school || '',
-        sportType: form.sportType || '',
-        clubName: form.clubName || '',
+        school: form.listingAudience === 'school' ? form.school || profile?.school || '' : '',
+        sportType: form.listingAudience === 'sport' ? form.sportType || '' : '',
+        clubName: form.listingAudience === 'sport' ? form.clubName || '' : '',
         price: form.type === 'FREE' ? '' : form.price,
         originalPrice: form.type === 'FREE' ? '' : form.originalPrice,
         photoUrls: finalPhotoUrls, 
@@ -536,32 +560,69 @@ export default function CreatePostPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-700">School / Suburb</label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                      <input
-                        name="school"
-                        value={form.school}
-                        onChange={handleAddField}
-                        placeholder="e.g. Melbourne Grammar or Richmond"
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
-                      />
-                      {form.school && (
-                        <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl mt-1 shadow-xl z-20 overflow-hidden">
-                          {filteredSchools.map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => setForm((prev) => ({ ...prev, school: s }))}
-                              className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 font-medium"
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                    <label className="block text-sm font-bold text-slate-700">Listing audience</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleListingAudienceChange('school')}
+                        className={`rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wider transition-all ${
+                          form.listingAudience === 'school'
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-400 hover:text-indigo-600'
+                        }`}
+                      >
+                        School
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleListingAudienceChange('sport')}
+                        className={`rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wider transition-all ${
+                          form.listingAudience === 'sport'
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-400 hover:text-indigo-600'
+                        }`}
+                      >
+                        Sport / Club
+                      </button>
                     </div>
                   </div>
+
+                  {form.listingAudience === 'school' && (
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-slate-700">School</label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          name="school"
+                          value={form.school}
+                          onChange={handleAddField}
+                          onFocus={() => setShowSchoolSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+                          placeholder="e.g. Melbourne Grammar or Richmond"
+                          className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                        />
+                        {showSchoolSuggestions && form.school.trim().length >= SCHOOL_QUERY_MIN_LENGTH && (
+                          <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-xl mt-1 shadow-xl z-20 overflow-hidden">
+                            {filteredSchools.length > 0 ? filteredSchools.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  setForm((prev) => ({ ...prev, school: s }));
+                                  setShowSchoolSuggestions(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 font-medium"
+                              >
+                                {s}
+                              </button>
+                            )) : (
+                              <div className="px-4 py-3 text-xs text-slate-500">No matching schools found.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">Suburb</label>
@@ -574,34 +635,36 @@ export default function CreatePostPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Sport Type</label>
-                      <select
-                        name="sportType"
-                        value={form.sportType}
-                        onChange={handleAddField}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
-                      >
-                        <option value="">Select sport type</option>
-                        {SPORT_TYPE_OPTIONS.map((sport) => (
-                          <option key={sport} value={sport}>
-                            {sport}
-                          </option>
-                        ))}
-                      </select>
+                  {form.listingAudience === 'sport' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-bold text-slate-700">Sport Type</label>
+                        <select
+                          name="sportType"
+                          value={form.sportType}
+                          onChange={handleAddField}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                        >
+                          <option value="">Select sport type</option>
+                          {SPORT_TYPE_OPTIONS.map((sport) => (
+                            <option key={sport} value={sport}>
+                              {sport}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-bold text-slate-700">Club Name</label>
+                        <input
+                          name="clubName"
+                          value={form.clubName}
+                          onChange={handleAddField}
+                          placeholder={form.sportType ? `${form.sportType} club name` : 'Enter club name'}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Club Name</label>
-                      <input
-                        name="clubName"
-                        value={form.clubName}
-                        onChange={handleAddField}
-                        placeholder={form.sportType ? `${form.sportType} club name` : 'Enter club name'}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">Item Condition</label>
@@ -611,12 +674,9 @@ export default function CreatePostPage() {
                       onChange={handleAddField}
                       className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
-                      <option value="New - with tags">New - with tags</option>
-                      <option value="New - without tags">New - without tags</option>
-                      <option value="Excellent">Excellent</option>
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Worn">Worn</option>
+                      {CONDITION_OPTIONS.map((condition) => (
+                        <option key={condition} value={condition}>{condition}</option>
+                      ))}
                     </select>
                   </div>
 

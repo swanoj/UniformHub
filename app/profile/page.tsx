@@ -13,13 +13,20 @@ import { SPORT_TYPES } from '@/lib/constants';
 import { useSchools } from '@/hooks/useSchools';
 import Link from 'next/link';
 
+const toStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+};
+
 export default function ProfilePage() {
   const { user, profile } = useUser();
   const [suburb, setSuburb] = useState(profile?.suburb || '');
   const [school, setSchool] = useState(profile?.school || '');
   const [sportType, setSportType] = useState(profile?.sportType || '');
   const [clubName, setClubName] = useState(profile?.clubName || '');
-  const [favSchools, setFavSchools] = useState<string[]>(profile?.favSchools || []);
+  const [favSchools, setFavSchools] = useState<string[]>(toStringArray(profile?.favSchools));
+  const [favSports, setFavSports] = useState<string[]>(toStringArray(profile?.favSports || profile?.favClubs));
   const [schoolSearch, setSchoolSearch] = useState('');
   const [updating, setUpdating] = useState(false);
   const [myPosts, setMyPosts] = useState<any[]>([]);
@@ -34,6 +41,7 @@ export default function ProfilePage() {
   const filteredSchools = AUSTRALIAN_SCHOOLS.filter(s => 
     s.toLowerCase().includes(schoolSearch.toLowerCase()) && !favSchools.includes(s)
   ).slice(0, 5);
+  const filteredSports = Object.keys(SPORT_TYPES).filter((sport) => !favSports.includes(sport));
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +68,8 @@ export default function ProfilePage() {
         sportType,
         clubName,
         favSchools,
+        favSports,
+        favClubs: favSports,
         updatedAt: new Date()
       });
       alert('Profile updated!');
@@ -72,6 +82,10 @@ export default function ProfilePage() {
 
   const toggleFavSchool = (s: string) => {
     setFavSchools(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
+
+  const toggleFavSport = (sport: string) => {
+    setFavSports(prev => prev.includes(sport) ? prev.filter(x => x !== sport) : [...prev, sport]);
   };
 
   const handleMarkStatus = async (postId: string, status: string) => {
@@ -218,31 +232,55 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Sport Type</label>
-                    <select
-                      value={sportType}
-                      onChange={(e) => setSportType(e.target.value)}
-                      className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option value="">Select sport type</option>
-                      {Object.keys(SPORT_TYPES).map((sport) => (
-                        <option key={sport} value={sport}>
-                          {sport}
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Favourite Sports</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {favSports.map((sport) => (
+                      <span key={sport} className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md flex items-center gap-1">
+                        {sport} <X className="w-3 h-3 cursor-pointer" onClick={() => toggleFavSport(sport)} />
+                      </span>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Club Name</label>
-                    <input
-                      type="text"
-                      value={clubName}
-                      onChange={(e) => setClubName(e.target.value)}
-                      placeholder={sportType ? `${sportType} club name` : 'Enter club name'}
-                      className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
-                    />
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) toggleFavSport(e.target.value);
+                    }}
+                    className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Add sport...</option>
+                    {filteredSports.map((sport) => (
+                      <option key={sport} value={sport}>
+                        {sport}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Primary Sport</label>
+                      <select
+                        value={sportType}
+                        onChange={(e) => setSportType(e.target.value)}
+                        className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
+                      >
+                        <option value="">Select sport type</option>
+                        {Object.keys(SPORT_TYPES).map((sport) => (
+                          <option key={sport} value={sport}>
+                            {sport}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest pl-1">Club Name</label>
+                      <input
+                        type="text"
+                        value={clubName}
+                        onChange={(e) => setClubName(e.target.value)}
+                        placeholder={sportType ? `${sportType} club name` : 'Enter club name'}
+                        className="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

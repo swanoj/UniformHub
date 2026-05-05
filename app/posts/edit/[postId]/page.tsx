@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package, Plus } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import Image from 'next/image';
+import { CONDITION_OPTIONS } from '@/lib/constants';
 
 const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const ITEM_NAMES = ["Basketball shorts","Basketball singlet","Bathers","Belt","Bib","Blazer","Blouse","Books","Calculator","Camp / Venture / Outdoor Ed items","Fleece","Football (AFL) guernsey","Football (AFL) shorts","Football boots","Hockey shirt","Hockey shorts","Hockey skirt","House polo","Indoor court shoes","Jumper","Library bag","Netball dress","Other","Pencil case","Pinafore","Rain jacket","Rash vest","School bag","School shoes","Scarf","Shorts - Summer","Shorts - Winter","Soccer boots","Soccer jersey/shirt","Soccer shorts","Sport hat","Sport jacket","Sport polo","Sport shorts","Sport skort","Sport track pants","Sport visor","Sports bag","Straw hat","Summer dress","Swim cap","Tie","Trousers","Umbrella","Winter skirt"];
@@ -419,12 +420,9 @@ export default function EditPostPage() {
                       onChange={handleAddField}
                       className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
-                      <option value="New - with tags">New - with tags</option>
-                      <option value="New - without tags">New - without tags</option>
-                      <option value="Excellent">Excellent</option>
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Worn">Worn</option>
+                      {CONDITION_OPTIONS.map((condition) => (
+                        <option key={condition} value={condition}>{condition}</option>
+                      ))}
                     </select>
                   </div>
 

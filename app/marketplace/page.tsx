@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { PostCard } from '@/components/PostCard';
 import { useFeed } from '@/hooks/useFeed';
+import { CONDITION_OPTIONS } from '@/lib/constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -20,7 +21,7 @@ import {
 
 const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
-const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
+const CONDITIONS = ['All', ...CONDITION_OPTIONS];
 
 function MarketplaceContent() {
   const searchParams = useSearchParams();

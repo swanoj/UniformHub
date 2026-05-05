@@ -37,6 +37,13 @@ export const AUSTRALIAN_SCHOOLS = [
 
 export const TERMS_VERSION = '2.0';
 
+export const CONDITION_OPTIONS = [
+  "New with tags",
+  "Excellent",
+  "Good",
+  "Fair",
+];
+
 export const SPORT_TYPES: Record<string, string[]> = {
   AFL: [],
   Basketball: [],
