@@ -42,6 +42,7 @@ export default function EditPostPage() {
     price: '',
     originalPrice: '',
     school: '',
+    suburb: '',
   });
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function EditPostPage() {
             price: data.price ? String(data.price) : '',
             originalPrice: data.originalPrice ? String(data.originalPrice) : '',
             school: data.school || '',
+            suburb: data.suburb || '',
           });
           setQuantity(data.quantity || 1);
           setExistingPhotos(data.photoUrls || []);
@@ -189,10 +191,11 @@ export default function EditPostPage() {
         quantity: quantity,
         condition: form.condition,
         school: form.school || profile?.school || '',
+        suburb: form.suburb || profile?.suburb || '',
         price: form.type === 'FREE' ? '' : form.price,
         originalPrice: form.type === 'FREE' ? '' : form.originalPrice,
         photoUrls: finalPhotoUrls, 
-        searchTerms: `${form.title} ${form.description} ${form.school} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
+        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
         updatedAt: serverTimestamp(),
       });
       
@@ -214,7 +217,7 @@ export default function EditPostPage() {
     id: postId,
     photoUrls: [...existingPhotos, ...previewUrls],
     ownerName: profile?.displayName || 'You',
-    suburb: profile?.suburb || 'Local',
+    suburb: form.suburb || profile?.suburb || 'Local',
     createdAt: { toDate: () => new Date() },
     status: 'ACTIVE'
   };
@@ -319,17 +322,17 @@ export default function EditPostPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
-                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
-                        <option value="Child">Child</option>
-                        <option value="Adult">Adult</option>
+                      <label className="block text-sm font-bold text-slate-700">Size</label>
+                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="" disabled>Select Size</option>
+                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Size</label>
-                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
-                        <option value="" disabled>Select Size</option>
-                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
+                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="Child">Child</option>
+                        <option value="Adult">Adult</option>
                       </select>
                     </div>
                   </div>
@@ -399,12 +402,22 @@ export default function EditPostPage() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-700">Suburb</label>
+                    <input
+                      name="suburb"
+                      value={form.suburb}
+                      onChange={handleAddField}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-slate-700">Item Condition</label>
                     <select
                       name="condition"
                       value={form.condition}
                       onChange={handleAddField}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
                       <option value="New - with tags">New - with tags</option>
                       <option value="New - without tags">New - without tags</option>

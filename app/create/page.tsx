@@ -50,6 +50,7 @@ export default function CreatePostPage() {
     price: '',
     originalPrice: '',
     school: searchParams.get('school') || '',
+    suburb: profile?.suburb || '',
     sportType: '',
     clubName: '',
     sourcePostId: searchParams.get('sourcePostId') || '',
@@ -186,6 +187,7 @@ export default function CreatePostPage() {
         title: '',
         description: '',
         school: '',
+        suburb: profile?.suburb || '',
         sportType: '',
         clubName: '',
         sourcePostId: '',
@@ -275,11 +277,11 @@ export default function CreatePostPage() {
         originalPrice: form.type === 'FREE' ? '' : form.originalPrice,
         photoUrls: finalPhotoUrls, 
         status: newStatus,
-        searchTerms: `${form.title} ${form.description} ${form.school} ${form.sportType} ${form.clubName} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
+        searchTerms: `${form.title} ${form.description} ${form.school} ${form.suburb} ${form.sportType} ${form.clubName} ${form.category}`.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 2),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
 
-        suburb: form.school || profile?.suburb || 'Local',
+        suburb: form.suburb || profile?.suburb || '',
         sourcePostId: form.sourcePostId || null,
         expiresAt: addWeeks(new Date(), 8),
       };
@@ -307,7 +309,7 @@ export default function CreatePostPage() {
     quantity: quantity,
     photoUrls: previewUrls,
     ownerName: profile?.displayName || 'You',
-    suburb: profile?.suburb || 'Local',
+    suburb: form.suburb || profile?.suburb || 'Local',
     createdAt: { toDate: () => new Date() }
   };
 
@@ -417,17 +419,17 @@ export default function CreatePostPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
-                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
-                        <option value="Child">Child</option>
-                        <option value="Adult">Adult</option>
+                      <label className="block text-sm font-bold text-slate-700">Size</label>
+                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="" disabled>Select Size</option>
+                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Size</label>
-                      <select name="size" value={form.size} onChange={handleAddField} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
-                        <option value="" disabled>Select Size</option>
-                        {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                      <label className="block text-sm font-bold text-slate-700">Category (Size)</label>
+                      <select name="sizeCategory" value={(form as any).sizeCategory} onChange={handleAddField} className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium">
+                        <option value="Child">Child</option>
+                        <option value="Adult">Adult</option>
                       </select>
                     </div>
                   </div>
@@ -541,6 +543,17 @@ export default function CreatePostPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-700">Suburb</label>
+                    <input
+                      name="suburb"
+                      value={form.suburb}
+                      onChange={handleAddField}
+                      placeholder="e.g. Richmond"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium transition-shadow hover:shadow-sm"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-slate-700">Sport Type</label>
@@ -576,7 +589,7 @@ export default function CreatePostPage() {
                       name="condition"
                       value={form.condition}
                       onChange={handleAddField}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-300 shadow-sm rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none cursor-pointer"
                     >
                       <option value="New - with tags">New - with tags</option>
                       <option value="New - without tags">New - without tags</option>

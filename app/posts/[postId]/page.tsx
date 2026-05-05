@@ -422,6 +422,9 @@ export default function PostDetailPage() {
                     <div>
                        <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Location</p>
                        <p className="text-sm font-semibold text-slate-900">{post.school || post.suburb || 'N/A'}</p>
+                       {post.suburb && post.school && post.suburb !== post.school && (
+                         <p className="mt-1 text-sm font-semibold text-slate-700">{post.suburb}</p>
+                       )}
                     </div>
                     <div>
                        <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase mb-0.5">Category</p>
