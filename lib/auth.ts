@@ -1,7 +1,7 @@
 'use client';
 
 import type { AuthProvider, UserCredential } from 'firebase/auth';
-import { getRedirectResult, signInWithRedirect } from 'firebase/auth';
+import { getRedirectResult, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export function shouldUseRedirectAuth() {
@@ -10,8 +10,21 @@ export function shouldUseRedirectAuth() {
 }
 
 export async function signInWithProvider(provider: AuthProvider): Promise<UserCredential | null> {
-  await signInWithRedirect(auth, provider);
-  return null;
+  if (shouldUseRedirectAuth()) {
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
+
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export function getProviderRedirectResult() {

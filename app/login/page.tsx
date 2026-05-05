@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider, appleProvider } from '@/lib/firebase';
 import { getProviderRedirectResult, signInWithProvider, shouldUseRedirectAuth } from '@/lib/auth';
+import { useUser } from '@/components/FirebaseProvider';
 import { ArrowLeft, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading, profile } = useUser();
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -38,6 +40,12 @@ export default function LoginPage() {
       cancelled = true;
     };
   }, [router]);
+
+  React.useEffect(() => {
+    if (!loading && user && profile?.onboarded !== false) {
+      router.replace('/');
+    }
+  }, [loading, profile, router, user]);
 
   const handleLogin = async (provider: any) => {
     setAuthError('');
