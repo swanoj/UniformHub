@@ -18,7 +18,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 
-const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
+const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 

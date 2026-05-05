@@ -37,12 +37,12 @@ export const AUSTRALIAN_SCHOOLS = [
 
 export const SPORT_TYPES: Record<string, string[]> = {
   AFL: [],
-  Netball: [],
   Basketball: [],
-  Hockey: [],
-  Soccer: [],
-  Floorball: [],
   Cricket: [],
-  Rugby: [],
+  Floorball: [],
+  Hockey: [],
+  Netball: [],
   Other: [],
+  Rugby: [],
+  Soccer: [],
 };

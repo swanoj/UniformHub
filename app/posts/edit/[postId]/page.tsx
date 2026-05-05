@@ -13,8 +13,8 @@ import { Camera, Loader2, X, ChevronLeft, LayoutGrid, Package, Plus } from 'luci
 import { PostCard } from '@/components/PostCard';
 import Image from 'next/image';
 
-const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
-const ITEM_NAMES = ["Blazer","Summer dress","Pinafore","Winter skirt","Blouse","Tie","Jumper","Straw hat","Sport hat","Sport Visor","Scarf","Rain jacket","Sport jacket","Fleece","Sport track pants","Sport shorts","Sport skort","Sport polo","House polo","Bathers","Rash vest","Swim cap","School Bag","Sports bag","Library bag","Pencil case","Umbrella","School Shoes","Shorts - Summer","Shorts - Winter","Belt","Trousers","Calculator","Books","Camp / Venture / Outdoor Ed items","Netball dress","Bib","Basketball singlet","Basketball shorts","Hockey shirt","Hocket skirt","Hockey Shorts","Football (AFL) guernsey","Football (AFL) shorts","Soccer jersey/shirt","Soccer shorts","Indoor court shoes","Football boots","Soccer boots","Other"];
+const CATEGORIES = ['School Uniforms & Sports Equipment'];
+const ITEM_NAMES = ["Basketball shorts","Basketball singlet","Bathers","Belt","Bib","Blazer","Blouse","Books","Calculator","Camp / Venture / Outdoor Ed items","Fleece","Football (AFL) guernsey","Football (AFL) shorts","Football boots","Hockey shirt","Hockey shorts","Hockey skirt","House polo","Indoor court shoes","Jumper","Library bag","Netball dress","Other","Pencil case","Pinafore","Rain jacket","Rash vest","School bag","School shoes","Scarf","Shorts - Summer","Shorts - Winter","Soccer boots","Soccer jersey/shirt","Soccer shorts","Sport hat","Sport jacket","Sport polo","Sport shorts","Sport skort","Sport track pants","Sport visor","Sports bag","Straw hat","Summer dress","Swim cap","Tie","Trousers","Umbrella","Winter skirt"];
 const SIZES = ["4","6","8","10","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
 
@@ -34,7 +34,7 @@ export default function EditPostPage() {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    category: 'School',
+    category: 'School Uniforms & Sports Equipment',
     type: 'SALE',
     size: '',
     sizeCategory: 'Child',
@@ -65,7 +65,7 @@ export default function EditPostPage() {
           setForm({
             title: data.title || '',
             description: data.description || '',
-            category: data.category || 'School',
+            category: data.category || 'School Uniforms & Sports Equipment',
             type: data.type || 'SALE',
             size: data.size || '',
             sizeCategory: data.sizeCategory || 'Child',
@@ -336,7 +336,7 @@ export default function EditPostPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-slate-700">Sale Price</label>
+                      <label className="block text-sm font-bold text-slate-700">Price</label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
                         <input

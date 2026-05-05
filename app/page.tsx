@@ -35,7 +35,7 @@ import {
   LocateFixed
 } from 'lucide-react';
 
-const CATEGORIES = ['School', 'Sports Equipment', 'Secondhand'];
+const CATEGORIES = ['School Uniforms & Sports Equipment'];
 const TYPES = ['All', 'SALE', 'WTB', 'FREE'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 
@@ -140,7 +140,6 @@ export default function FeedPage() {
   const [selectedDistance, setSelectedDistance] = useState('40');
   const [anyDistance, setAnyDistance] = useState(false);
   const [selectedSportType, setSelectedSportType] = useState('All');
-  const [secondhandOnly, setSecondhandOnly] = useState(false);
   const [selectedSortBy, setSelectedSortBy] = useState('Newest');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -151,9 +150,8 @@ export default function FeedPage() {
     size: selectedSize,
     school: 'All',
     sportType: selectedSportType,
-    secondhandOnly,
     sortBy: selectedSortBy
-  }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSportType, secondhandOnly, selectedSortBy]);
+  }), [selectedCategory, selectedType, selectedCondition, selectedSize, selectedSportType, selectedSortBy]);
 
   const effectiveSearchQuery = useMemo(
     () => `${searchQuery} ${selectedLocation}`.trim(),
@@ -312,7 +310,7 @@ export default function FeedPage() {
              </div>
              <div className="space-y-1">
                 <button 
-                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
+                  onClick={() => {setSelectedType('All'); setSelectedCategory('All'); setSelectedCondition('All'); setSelectedSportType('All'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40');}}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     selectedCategory === 'All' && selectedType === 'All' && selectedCondition === 'All' ? 'bg-[#F0F2F5]' : 'hover:bg-slate-50'
                   }`}
@@ -487,16 +485,6 @@ export default function FeedPage() {
                    </select>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={secondhandOnly}
-                    onChange={(e) => setSecondhandOnly(e.target.checked)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  Secondhand only
-                </label>
-
              </div>
 
              <div className="h-[1px] bg-slate-200 !my-4"></div>
@@ -513,7 +501,7 @@ export default function FeedPage() {
                        }`}
                      >
                        <div className={`w-9 h-9 rounded-full flex items-center justify-center ${selectedCategory === cat ? 'bg-[#1877F2]' : 'bg-slate-200 text-slate-600'}`}>
-                         {cat === 'School' ? <Home className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : cat === 'Sports Equipment' ? <Tag className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} /> : <LayoutGrid className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} />}
+                         <Tag className={`w-5 h-5 ${selectedCategory === cat ? 'text-white' : ''}`} />
                        </div>
                        <span className={`text-[15px] font-semibold text-left ${selectedCategory === cat ? 'text-slate-900' : 'text-slate-800'}`}>{cat}</span>
                      </button>
@@ -825,7 +813,7 @@ export default function FeedPage() {
                           <h3 className="text-lg font-bold text-slate-800 tracking-tight">No results found</h3>
                           <p className="text-slate-400 text-sm italic">Lower your filters or try a different term.</p>
                           <button 
-                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSecondhandOnly(false); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
+                            onClick={() => {setSelectedCategory('All'); setSelectedType('All'); setSelectedCondition('All'); setSelectedSize('All'); setSelectedSportType('All'); setSelectedSortBy('Newest'); setSearchQuery(''); setLocationQuery(''); setSelectedLocation(''); setSelectedDistance('40'); setAnyDistance(false);}}
                             className="mt-4 text-indigo-600 font-bold hover:underline text-sm"
                           >
                             Show all listings

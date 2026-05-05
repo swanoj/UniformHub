@@ -102,7 +102,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
          
          <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl w-full max-w-sm flex flex-col gap-4 text-left">
            <div>
-             <label className="block text-sm font-bold text-slate-700 mb-1">Primary School / Club</label>
+             <label className="block text-sm font-bold text-slate-700 mb-1">School / Club name / Sport</label>
              <div className="relative">
                <input
                  type="text"
