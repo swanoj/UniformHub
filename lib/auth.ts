@@ -15,7 +15,16 @@ export async function signInWithProvider(provider: AuthProvider) {
     return null;
   }
 
-  return signInWithPopup(auth, provider);
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-blocked') {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export function getProviderRedirectResult() {

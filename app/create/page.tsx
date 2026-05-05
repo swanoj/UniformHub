@@ -2,14 +2,12 @@
 
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, query, where, getCountFromServer } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { useUser } from '@/components/FirebaseProvider';
 import { Navbar } from '@/components/Navbar';
-import { motion } from 'motion/react';
-import Link from 'next/link';
-import { Image as ImageIcon, Camera, Loader2, X, Plus, AlertCircle, ChevronLeft, LayoutGrid, Sparkles, Wand2, Package, Search } from 'lucide-react';
+import { Camera, Loader2, X, Plus, AlertCircle, ChevronLeft, LayoutGrid, Sparkles, Package, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import { addWeeks } from 'date-fns';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -26,12 +24,14 @@ const SPORT_TYPE_OPTIONS = ['AFL', 'Basketball', 'Cricket', 'Floorball', 'Hockey
 const ITEM_NAMES = ["Basketball shorts","Basketball singlet","Bathers","Belt","Bib","Blazer","Blouse","Books","Calculator","Camp / Venture / Outdoor Ed items","Fleece","Football (AFL) guernsey","Football (AFL) shorts","Football boots","Hockey shirt","Hockey shorts","Hockey skirt","House polo","Indoor court shoes","Jumper","Library bag","Netball dress","Other","Pencil case","Pinafore","Rain jacket","Rash vest","School bag","School shoes","Scarf","Shorts - Summer","Shorts - Winter","Soccer boots","Soccer jersey/shirt","Soccer shorts","Sport hat","Sport jacket","Sport polo","Sport shorts","Sport skort","Sport track pants","Sport visor","Sports bag","Straw hat","Summer dress","Swim cap","Tie","Trousers","Umbrella","Winter skirt"];
 const SIZES = ["4","6","8","10","12","14","16","18","20","22","24","26","28","30","32","34","36","38","40","XXS","XS","S","M","L"];
 const TYPES = ['SALE', 'WTB', 'FREE'];
+const getInitialListingType = (type: string | null): string => (type && TYPES.includes(type) ? type : 'SALE');
 
 export default function CreatePostPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile } = useUser();
   const [loading, setLoading] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -42,7 +42,7 @@ export default function CreatePostPage() {
     title: searchParams.get('title') || '',
     description: '',
     category: 'School Uniforms & Sports Equipment',
-    type: (searchParams.get('type') as any) || 'SALE',
+    type: getInitialListingType(searchParams.get('type')),
     size: searchParams.get('size') || '',
     sizeCategory: 'Child',
     quantity: '1',
@@ -57,6 +57,7 @@ export default function CreatePostPage() {
   });
 
   const handleAddField = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (publishError) setPublishError('');
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -68,6 +69,7 @@ export default function CreatePostPage() {
     .slice(0, 5);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPublishError('');
     const files = Array.from(e.target.files || []);
     if (files.length + imageFiles.length > 4) {
       alert("You can only upload up to 4 photos.");
@@ -80,6 +82,7 @@ export default function CreatePostPage() {
   };
 
   const removeImage = (index: number) => {
+    setPublishError('');
     setImageFiles(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => {
       const newUrls = [...prev];
@@ -197,20 +200,36 @@ export default function CreatePostPage() {
       
       setImageFiles([]);
       setPreviewUrls([]);
+      setPublishError('');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    setPublishError('');
+
+    if (!user) {
+      setPublishError('Please sign in before publishing a listing.');
+      router.push('/login');
+      return;
+    }
 
     setLoading(true);
     
     try {
       if (imageFiles.length === 0) {
-        alert("Please add at least one photo.");
-        setLoading(false);
+        setPublishError('Please add at least one photo.');
+        return;
+      }
+
+      if (form.type !== 'FREE' && form.price && Number(form.price) < 0) {
+        setPublishError('Price cannot be negative.');
+        return;
+      }
+
+      if (form.type !== 'FREE' && form.originalPrice && Number(form.originalPrice) < 0) {
+        setPublishError('Original price cannot be negative.');
         return;
       }
 
@@ -220,22 +239,23 @@ export default function CreatePostPage() {
         /[\w.-]+@[\w.-]+\.\w+/.test(form.description) ||
         /\+?\d{8,15}/.test(form.description)
       ) {
-        alert("Please do not include personal contact details (email or phone numbers) in the description.");
-        setLoading(false);
+        setPublishError('Please do not include personal contact details (email or phone numbers) in the description.');
         return;
       }
 
       let finalPhotoUrls: string[] = [];
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
-        try {
-           const fileRef = ref(storage, `post_images/${user.uid}/${Date.now()}_${file.name}`);
-           const snapshot = await uploadBytes(fileRef, file);
-           const dlUrl = await getDownloadURL(snapshot.ref);
-           finalPhotoUrls.push(dlUrl);
-        } catch (err) {
-           console.error("Upload failed for image", i, err);
-        }
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileRef = ref(storage, `post_images/${user.uid}/${Date.now()}_${i}_${safeFileName}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const dlUrl = await getDownloadURL(snapshot.ref);
+        finalPhotoUrls.push(dlUrl);
+      }
+
+      if (finalPhotoUrls.length === 0) {
+        setPublishError('Photo upload failed. Please try again.');
+        return;
       }
 
       let newStatus = 'ACTIVE';
@@ -267,7 +287,7 @@ export default function CreatePostPage() {
         size: form.size,
         sizeCategory: (form as any).sizeCategory,
         quantity: quantity,
-        type: form.type,
+        type: TYPES.includes(form.type) ? form.type : 'SALE',
         condition: form.condition,
         verifiedCondition: (form as any).verifiedCondition || '',
         school: form.school || profile?.school || '',
@@ -298,7 +318,7 @@ export default function CreatePostPage() {
       }
     } catch (error: any) {
       console.error("Error creating post", error);
-      alert("Failed to publish: " + (error.message || "Unknown error occurred."));
+      setPublishError(error?.message ? `Failed to publish: ${error.message}` : 'Failed to publish. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -636,6 +656,11 @@ export default function CreatePostPage() {
             </div>
 
             <div className="pt-4 border-t border-slate-40 space-y-4">
+               {publishError && (
+                 <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                   {publishError}
+                 </p>
+               )}
                <button
                   type="submit"
                   disabled={loading}
