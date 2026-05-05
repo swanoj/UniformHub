@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider, appleProvider } from '@/lib/firebase';
 import { getProviderRedirectResult, signInWithProvider, shouldUseRedirectAuth } from '@/lib/auth';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowLeft, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +15,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [providerSubmitting, setProviderSubmitting] = React.useState(false);
   const [authError, setAuthError] = React.useState('');
+  const [showAuth, setShowAuth] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -89,12 +89,83 @@ export default function LoginPage() {
     }
   };
 
+  if (!showAuth) {
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] flex flex-col p-6">
+        <section id="welcome-screen" className="flex flex-1 flex-col justify-between mx-auto w-full max-w-md">
+          <div className="pt-8">
+            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <span className="text-white font-black text-3xl italic tracking-tighter">U</span>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-indigo-600">UniformHub</p>
+              <h1 className="text-5xl font-black leading-[0.95] tracking-tight text-slate-950">
+                School uniforms, sorted.
+              </h1>
+              <p className="text-base font-medium leading-7 text-slate-600">
+                Buy and sell second-hand school uniforms with local families, clubs, and school communities.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <ShoppingBag className="h-5 w-5 text-indigo-600" />
+                <p className="text-sm font-bold text-slate-800">List outgrown uniforms in minutes.</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                <p className="text-sm font-bold text-slate-800">Keep conversations inside the app.</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <Sparkles className="h-5 w-5 text-amber-500" />
+                <p className="text-sm font-bold text-slate-800">Find the right school, sport, size, and suburb.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pb-3">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setShowAuth(true);
+              }}
+              className="w-full rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-200 transition-all active:scale-[0.98]"
+            >
+              Get started
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signin');
+                setShowAuth(true);
+              }}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-black uppercase tracking-widest text-slate-700 transition-all active:scale-[0.98]"
+            >
+              I already have an account
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <Link href="/" className="fixed top-6 left-6 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-bold text-sm">
+      <button
+        type="button"
+        onClick={() => {
+          setShowAuth(false);
+          setAuthError('');
+        }}
+        className="fixed top-6 left-6 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-bold text-sm"
+      >
         <ArrowLeft className="w-4 h-4" />
-        Back to Home
-      </Link>
+        Welcome
+      </button>
 
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <div className="p-8 text-center bg-slate-50 border-b border-slate-100">

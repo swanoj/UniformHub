@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  if (pathname === '/create') return null;
+  if (pathname === '/create' || pathname === '/login') return null;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-t border-slate-200 pb-safe shadow-2xl">
